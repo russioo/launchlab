@@ -11,7 +11,6 @@ import { createToken, confirmToken } from "@/lib/api";
 // Use Helius RPC - set NEXT_PUBLIC_HELIUS_API_KEY in .env.local
 const HELIUS_API_KEY = process.env.NEXT_PUBLIC_HELIUS_API_KEY || "79f04b6a-679c-420b-adc0-63e8109280ca";
 const RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
-const INITIAL_BUY_SOL = 0.05; // Dev wallet buys 0.05 SOL worth
 
 export function CreateTokenForm() {
   const { publicKey, connected, signTransaction } = useWallet();
@@ -182,9 +181,9 @@ export function CreateTokenForm() {
         router.push("/");
       }, 5000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating token:", error);
-      setError(error.message || "failed to create token");
+      setError(error instanceof Error ? error.message : "failed to create token");
       setStatus("");
     } finally {
       setIsLoading(false);

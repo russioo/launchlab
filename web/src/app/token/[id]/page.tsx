@@ -19,8 +19,8 @@ export default function TokenDetail() {
       try {
         const data = await getToken(tokenId);
         setToken(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch token");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to fetch token");
       } finally {
         setLoading(false);
       }

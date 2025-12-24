@@ -8,8 +8,13 @@
  * - Add liquidity after graduation
  */
 
-import { Connection, Keypair, VersionedTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { OnlinePumpAmmSdk, PumpAmmSdk } from "@pump-fun/pump-swap-sdk";
+import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token";
 import bs58 from "bs58";
+import BN from "bn.js";
+
+const TOKEN_2022 = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 const RPC_URL = process.env.HELIUS_RPC_URL || 
   `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}` ||
@@ -37,9 +42,11 @@ interface TokenConfig {
  */
 export class PumpPortalEngine {
   private connection: Connection;
+  private pumpAmmSdk: PumpAmmSdk;
 
   constructor(rpcUrl: string = RPC_URL) {
     this.connection = new Connection(rpcUrl, "confirmed");
+    this.pumpAmmSdk = new PumpAmmSdk();
   }
 
   /**
@@ -62,7 +69,7 @@ export class PumpPortalEngine {
       console.log(`   Dev wallet: ${wallet.publicKey.toBase58()}`);
 
       // Check if token is graduated (on PumpSwap)
-      const graduated = await this.isGraduated(config.mint);
+      const { graduated, poolKey } = await this.isGraduated(config.mint);
       result.phase = graduated ? "graduated" : "bonding";
       console.log(`   Phase: ${result.phase.toUpperCase()}`);
 
@@ -135,12 +142,12 @@ export class PumpPortalEngine {
 
       // 6. If GRADUATED: 50% buyback, 50% LP
       // If BONDING: 100% buyback
-      if (graduated) {
+      if (graduated && poolKey) {
         const halfFees = buybackAmount / 2;
         
         // 50% Buyback
         console.log(`   [GRADUATED] Buying back with ${halfFees.toFixed(4)} SOL (50%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, halfFees, graduated);
+        const buyResult = await this.buyToken(wallet, config.mint, halfFees, true);
         if (buyResult.success && buyResult.signature) {
           result.buybackSol = halfFees;
           result.transactions.push({
@@ -151,15 +158,42 @@ export class PumpPortalEngine {
           console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
         }
 
-        // 50% LP (TODO: implement with pumpswap SDK)
-        console.log(`   [GRADUATED] LP addition: ${halfFees.toFixed(4)} SOL (50%) - Coming soon`);
-        result.lpSol = halfFees;
-        // TODO: Add LP using @pump-fun/pump-swap-sdk
+        // Wait for token balance to update
+        await new Promise(r => setTimeout(r, 2000));
+
+        // 50% LP - Add liquidity to PumpSwap pool
+        console.log(`   [GRADUATED] Adding ${halfFees.toFixed(4)} SOL to LP (50%)...`);
+        const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, halfFees);
+        if (lpResult.success && lpResult.signature) {
+          result.lpSol = halfFees;
+          result.lpTokens = lpResult.lpTokens;
+          result.transactions.push({
+            type: "add_liquidity",
+            signature: lpResult.signature,
+            solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
+          });
+        } else if (lpResult.error) {
+          console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
+        }
+        
+      } else if (graduated && !poolKey) {
+        // Graduated but no pool found yet - do 100% buyback
+        console.log(`   [GRADUATED] Pool not found yet, doing 100% buyback...`);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, true);
+        if (buyResult.success && buyResult.signature) {
+          result.buybackSol = buybackAmount;
+          result.transactions.push({
+            type: "buyback",
+            signature: buyResult.signature,
+            solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
+          });
+          console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+        }
         
       } else {
         // BONDING: 100% buyback
         console.log(`   [BONDING] Buying back with ${buybackAmount.toFixed(4)} SOL (100%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, graduated);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, false);
         if (buyResult.success && buyResult.signature) {
           result.buybackSol = buybackAmount;
           result.transactions.push({
@@ -186,7 +220,7 @@ export class PumpPortalEngine {
   /**
    * Check if token is graduated (on PumpSwap/Raydium)
    */
-  async isGraduated(mint: string): Promise<boolean> {
+  async isGraduated(mint: string): Promise<{ graduated: boolean; poolKey: string | null }> {
     try {
       // Check DexScreener for PumpSwap pool
       const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${mint}`);
@@ -197,14 +231,87 @@ export class PumpPortalEngine {
           p.dexId === "pumpswap" || p.dexId === "raydium"
         );
         if (pumpPair) {
-          console.log(`   Graduated: Pool found on ${pumpPair.dexId}`);
-          return true;
+          console.log(`   Graduated: Pool found on ${pumpPair.dexId} (${pumpPair.pairAddress})`);
+          return { graduated: true, poolKey: pumpPair.pairAddress };
         }
       }
       
-      return false;
+      return { graduated: false, poolKey: null };
     } catch (err) {
-      return false;
+      return { graduated: false, poolKey: null };
+    }
+  }
+
+  /**
+   * Add liquidity to PumpSwap pool
+   */
+  async addLiquidity(
+    wallet: Keypair,
+    tokenMint: string,
+    poolKey: string,
+    solAmount: number
+  ): Promise<{ success: boolean; signature?: string; solscanUrl?: string; lpTokens: number; error?: string }> {
+    try {
+      console.log(`   Adding ${solAmount.toFixed(4)} SOL to LP...`);
+      
+      const onlineSdk = new OnlinePumpAmmSdk(this.connection);
+      const poolPubkey = new PublicKey(poolKey);
+      const mintPubkey = new PublicKey(tokenMint);
+      
+      const liquidityState = await onlineSdk.liquiditySolanaState(poolPubkey, wallet.publicKey);
+      
+      const solLamports = new BN(Math.floor(solAmount * LAMPORTS_PER_SOL));
+      const depositCalc = this.pumpAmmSdk.depositQuoteInput(liquidityState, solLamports, 10); // 10% slippage
+      
+      // Check if we have enough tokens
+      const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
+      let tokenBalance = BigInt(0);
+      try {
+        const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+        tokenBalance = acc.amount;
+      } catch {
+        // No token account
+      }
+      
+      const tokensNeeded = BigInt(depositCalc.base.toString());
+      console.log(`   Tokens needed: ${Number(tokensNeeded) / 1e6}, have: ${Number(tokenBalance) / 1e6}`);
+      
+      if (tokenBalance < tokensNeeded) {
+        console.log(`   ⚠️ Not enough tokens for LP (need ${Number(tokensNeeded) / 1e6}, have ${Number(tokenBalance) / 1e6})`);
+        return { success: false, lpTokens: 0, error: "Not enough tokens for LP" };
+      }
+      
+      const depositIxs = await this.pumpAmmSdk.depositInstructionsInternal(
+        liquidityState,
+        depositCalc.lpToken,
+        depositCalc.maxBase,
+        depositCalc.maxQuote
+      );
+      
+      const tx = new Transaction().add(...depositIxs);
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = wallet.publicKey;
+      tx.sign(wallet);
+      
+      const signature = await this.connection.sendRawTransaction(tx.serialize(), { 
+        maxRetries: 3, 
+        skipPreflight: true 
+      });
+      await this.connection.confirmTransaction(signature, "confirmed");
+      
+      console.log(`   ✅ LP added: https://solscan.io/tx/${signature}`);
+      
+      return {
+        success: true,
+        signature,
+        solscanUrl: `https://solscan.io/tx/${signature}`,
+        lpTokens: depositCalc.lpToken.toNumber(),
+      };
+      
+    } catch (error: any) {
+      console.log(`   ❌ LP error: ${error.message}`);
+      return { success: false, lpTokens: 0, error: error.message };
     }
   }
 

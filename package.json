@@ -4,8 +4,8 @@
   "description": "Auto-liquidity engine for Pumpfun tokens",
   "scripts": {
     "start": "cd backend && npm run build && npm start",
-    "build": "cd web && npm install && npm run build",
-    "build:backend": "cd backend && npm install && npm run build",
+    "build": "cd backend && npm install && npm run build",
+    "build:web": "cd web && npm install && npm run build",
     "build:all": "cd backend && npm install && cd ../web && npm install && npm run build",
     "test:liquidity": "npx ts-node test-add-liquidity.ts",
     "test:liquid": "npx ts-node test-liquid-tech.ts",

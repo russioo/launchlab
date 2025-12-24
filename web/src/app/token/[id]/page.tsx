@@ -119,19 +119,19 @@ export default function TokenDetail() {
         <div className="grid grid-cols-4 gap-4 mb-8">
           <StatCard 
             label="fees claimed" 
-            value={`${(token.total_fees_claimed || 0).toFixed(4)}`}
+            value={`${(Number(token.total_fees_claimed) || 0).toFixed(4)}`}
             suffix="SOL"
             accent="green"
           />
           <StatCard 
             label="buybacks" 
-            value={`${(token.total_lp_fed || 0).toFixed(4)}`}
+            value={`${(Number(token.total_buyback) || 0).toFixed(4)}`}
             suffix="SOL"
             accent="green"
           />
           <StatCard 
             label="lp added" 
-            value={`${(token.total_volume || 0).toFixed(4)}`}
+            value={`${(Number(token.total_lp_added) || 0).toFixed(4)}`}
             suffix="SOL"
             accent="purple"
           />

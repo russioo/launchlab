@@ -72,6 +72,10 @@ export class PumpPortalEngine {
 
       // 2. Claim creator fees via pumpportal
       const claimResult = await this.claimCreatorFees(wallet);
+      
+      // Only count fees if claim was successful with a signature
+      let feesClaimed = 0;
+      
       if (claimResult.success && claimResult.signature) {
         result.transactions.push({
           type: "claim_fees",
@@ -79,17 +83,28 @@ export class PumpPortalEngine {
           solscanUrl: `https://solscan.io/tx/${claimResult.signature}`,
         });
         console.log(`   ✅ Claimed fees: ${claimResult.solscanUrl}`);
+
+        // Wait for balance to update
+        await new Promise(r => setTimeout(r, 2000));
+
+        // 3. Get balance AFTER claiming - difference = fees claimed
+        const balanceAfter = await this.connection.getBalance(wallet.publicKey);
+        feesClaimed = Math.max(0, (balanceAfter - balanceBefore) / LAMPORTS_PER_SOL);
+        
+        // Only count as fees if there's an actual POSITIVE difference
+        // (claim costs a small tx fee, so if balance went down, no fees were available)
+        if (feesClaimed <= 0.0001) {
+          feesClaimed = 0;
+          console.log(`   No fees available (balance unchanged)`);
+        } else {
+          console.log(`   Balance after claim: ${(balanceAfter / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+          console.log(`   Fees claimed: ${feesClaimed.toFixed(4)} SOL`);
+        }
+      } else {
+        console.log(`   No fees to claim`);
       }
-
-      // Wait for balance to update
-      await new Promise(r => setTimeout(r, 2000));
-
-      // 3. Get balance AFTER claiming - difference = fees claimed
-      const balanceAfter = await this.connection.getBalance(wallet.publicKey);
-      const feesClaimed = Math.max(0, (balanceAfter - balanceBefore) / LAMPORTS_PER_SOL);
+      
       result.feesClaimed = feesClaimed;
-      console.log(`   Balance after claim: ${(balanceAfter / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
-      console.log(`   Fees claimed: ${feesClaimed.toFixed(4)} SOL`);
 
       // 4. Only proceed if we claimed fees
       const minFeesForBuyback = 0.001; // Minimum fees to do a buyback

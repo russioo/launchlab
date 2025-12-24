@@ -165,7 +165,7 @@ export class PumpPortalEngine {
         console.log(`   [GRADUATED] Adding ${halfFees.toFixed(4)} SOL to LP (50%) + BURN...`);
         const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, halfFees);
         if (lpResult.success && lpResult.signature) {
-          result.lpSol = halfFees;
+        result.lpSol = halfFees;
           result.lpTokens = lpResult.lpTokens;
           result.transactions.push({
             type: "add_liquidity",

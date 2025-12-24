@@ -1,257 +1,218 @@
-import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
 
 export default function Docs() {
   return (
-    <div className="min-h-screen">
-      <Sidebar />
-      
-      {/* Main content - offset for sidebar on desktop, add top padding for mobile header */}
-      <main className="lg:ml-64 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
-        {/* Header */}
-        <header className="mb-6 sm:mb-8">
-          <h1 className="font-pixel text-lg sm:text-xl text-[var(--accent)] glow-green mb-2">
-            DOCS
-          </h1>
-          <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
-            learn how liquidify works
-          </p>
-        </header>
+    <div className="min-h-screen relative">
+      {/* Organic flowing background */}
+      <div className="organic-bg">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
+      </div>
 
-        <div className="max-w-3xl space-y-6 sm:space-y-8">
+      <Header />
+      
+      <main className="relative z-10 pt-28">
+        {/* Hero */}
+        <section className="max-w-6xl mx-auto px-5 py-8 lg:py-12">
+          <h1 className="text-4xl lg:text-5xl font-display tracking-tight mb-3">
+            How it <span className="hero-gradient">works</span>
+          </h1>
+          <p className="text-lg text-[var(--text-secondary)]">
+            Understanding the self-sustaining liquidity engine
+          </p>
+        </section>
+
+        <section className="max-w-3xl mx-auto px-5 pb-16 space-y-10">
+          
           {/* Overview */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
-              overview
-            </div>
-            <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 sm:p-6">
-              <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed mb-4">
-                liquidify is a self-replenishing liquidity engine for pumpfun tokens. 
-                we automatically claim your creator fees and use them to buyback your token 
-                and add liquidity to the pool.
+          <div className="opacity-0 animate-fade-in-up">
+            <h2 className="text-2xl font-display mb-4">Overview</h2>
+            <div className="glass rounded-[24px] p-6 lg:p-8">
+              <p className="text-[var(--text-secondary)] leading-relaxed mb-4">
+                Surge is a self-sustaining liquidity engine for PumpFun tokens. When you launch through Surge, 
+                we automatically claim your creator fees and use them to buyback your token and add liquidity.
               </p>
-              <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
-                the result: constant buy pressure, growing liquidity, and a more stable token.
+              <p className="text-[var(--coral)] font-medium leading-relaxed">
+                The result: constant buy pressure, growing liquidity, and a more stable token.
               </p>
             </div>
-          </section>
+          </div>
 
           {/* Two Phases */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
-              two phases
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="border border-yellow-500/30 bg-yellow-500/5 p-4 sm:p-5">
-                <div className="text-yellow-500 font-bold text-sm mb-2 sm:mb-3">BONDING CURVE</div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2 sm:mb-3">
-                  while your token is on the bonding curve (before $55k market cap):
-                </p>
-                <ul className="space-y-1 sm:space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <span className="text-[var(--accent)]">+</span>
-                    <span>claim creator fees</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[var(--accent)]">+</span>
-                    <span>100% goes to buybacks</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[var(--text-muted)]">-</span>
-                    <span className="text-[var(--text-muted)]">no lp yet (no pool exists)</span>
-                  </li>
+          <div className="opacity-0 animate-fade-in-up delay-100">
+            <h2 className="text-2xl font-display mb-4">Two phases</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-6 rounded-[24px] bg-gradient-to-br from-[var(--peach)]/40 to-[var(--coral-soft)]/20 border border-[var(--coral)]/15">
+                <div className="text-[var(--coral)] font-semibold text-lg mb-2">Bonding Curve</div>
+                <p className="text-xs text-[var(--text-muted)] mb-4">Before $55k market cap</p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3"><Check /> <span>Claim creator fees</span></li>
+                  <li className="flex items-center gap-3"><Check /> <span>100% to buybacks</span></li>
+                  <li className="flex items-center gap-3 text-[var(--text-muted)]"><XMark /> <span>No LP yet</span></li>
                 </ul>
               </div>
-              <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-4 sm:p-5">
-                <div className="text-[var(--accent)] font-bold text-sm mb-2 sm:mb-3">GRADUATED</div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2 sm:mb-3">
-                  after graduation to pumpswap:
-                </p>
-                <ul className="space-y-1 sm:space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <span className="text-[var(--accent)]">+</span>
-                    <span>claim creator fees</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[var(--accent)]">+</span>
-                    <span>buyback tokens</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-[var(--purple)]">+</span>
-                    <span>add to pumpswap lp</span>
-                  </li>
+              <div className="p-6 rounded-[24px] bg-gradient-to-br from-[var(--success)]/10 to-[var(--success)]/5 border border-[var(--success)]/20">
+                <div className="text-[var(--success)] font-semibold text-lg mb-2">Graduated</div>
+                <p className="text-xs text-[var(--text-muted)] mb-4">On PumpSwap</p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3"><Check success /> <span>Claim fees</span></li>
+                  <li className="flex items-center gap-3"><Check success /> <span>Buyback tokens</span></li>
+                  <li className="flex items-center gap-3"><Check success accent /> <span>Add to LP</span></li>
                 </ul>
               </div>
             </div>
-          </section>
+          </div>
 
           {/* The Loop */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
-              the 1-minute loop
-            </div>
-            <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-4 sm:p-6">
-              <div className="space-y-3 sm:space-y-4">
-                <LoopStep num={1} text="claim all creator fees" color="green" />
-                <Arrow />
-                <LoopStep num={2} text="buyback tokens (via jupiter)" color="green" />
-                <Arrow />
-                <LoopStep num={3} text="add tokens + sol to lp (graduated only)" color="purple" />
-                <Arrow />
-                <div className="text-center text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
-                  repeat every 1 minute
-                </div>
+          <div className="opacity-0 animate-fade-in-up delay-200">
+            <h2 className="text-2xl font-display mb-4">The 1-minute loop</h2>
+            <div className="p-6 lg:p-8 rounded-[24px] bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] text-white shadow-xl shadow-[var(--coral)]/20">
+              <div className="space-y-5">
+                <LoopStep num="1" text="Claim all creator fees" />
+                <LoopStep num="2" text="Buyback tokens via Jupiter" />
+                <LoopStep num="3" text="Add tokens + SOL to LP" />
+              </div>
+              <div className="mt-6 pt-5 border-t border-white/15 text-center text-white/70">
+                Repeats every 60 seconds, forever ∞
               </div>
             </div>
-          </section>
+          </div>
 
           {/* How to use */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
-              how to use
+          <div className="opacity-0 animate-fade-in-up delay-300">
+            <h2 className="text-2xl font-display mb-4">Getting started</h2>
+            <div className="space-y-3">
+              <Step num="1" title="Connect wallet" desc="Connect the wallet you want to use" />
+              <Step num="2" title="Create token" desc="Fill in your token details" />
+              <Step num="3" title="Paste private key" desc="Key of your connected wallet" />
+              <Step num="4" title="Done" desc="Everything runs automatically" />
             </div>
-            <div className="space-y-2 sm:space-y-3">
-              <DocStep num={1} title="connect wallet" desc="connect the wallet you want to use for automation" />
-              <DocStep num={2} title="create token" desc="fill in token details" />
-              <DocStep num={3} title="paste private key" desc="paste the private key OF THE CONNECTED WALLET" />
-              <DocStep num={4} title="automatic" desc="your wallet claims fees, buybacks, and adds lp" />
-            </div>
-            <div className="border border-red-500/30 bg-red-500/5 p-3 sm:p-4 mt-3 sm:mt-4">
-              <div className="text-red-400 font-bold text-xs mb-2">CONNECTED WALLET PRIVATE KEY</div>
-              <p className="text-xs text-[var(--text-muted)]">
-                the private key MUST be from the wallet you have connected. 
-                this is the wallet that receives creator fees and runs all automation.
-              </p>
-              <p className="text-[10px] text-red-400/70 mt-2">
-                phantom: settings → security → export private key
-              </p>
-            </div>
-          </section>
+          </div>
 
-          {/* Why Liquidity Matters */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
-              why liquidity matters
+          {/* Why Liquidity */}
+          <div className="opacity-0 animate-fade-in-up delay-400">
+            <h2 className="text-2xl font-display mb-4">Why liquidity matters</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Point icon={<ChartIcon />} text="Deeper liquidity, less slippage" />
+              <Point icon={<TrendIcon />} text="Constant buy pressure" />
+              <Point icon={<BalanceIcon />} text="More stable price action" />
+              <Point icon={<InfinityIcon />} text="LP grows forever" />
             </div>
-            <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 sm:p-6">
-              <ul className="space-y-2 sm:space-y-3 text-sm text-[var(--text-secondary)]">
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--accent)]">→</span>
-                  <span>deeper liquidity = less slippage for buyers</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--accent)]">→</span>
-                  <span>more stable price = less volatility</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--accent)]">→</span>
-                  <span>buybacks = constant buy pressure</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--purple)]">→</span>
-                  <span>lp addition = coin lives longer</span>
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Features */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
-              features
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              <FeatureCard title="your wallet" desc="all operations on your connected wallet" />
-              <FeatureCard title="auto-claim" desc="fees claimed every minute" />
-              <FeatureCard title="1 min cycles" desc="runs 24/7 automatically" />
-              <FeatureCard title="official sdks" desc="pumpfun + pumpswap + jupiter" />
-            </div>
-          </section>
+          </div>
 
           {/* FAQ */}
-          <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
-              faq
+          <div className="opacity-0 animate-fade-in-up delay-500">
+            <h2 className="text-2xl font-display mb-4">FAQ</h2>
+            <div className="space-y-4">
+              <FAQ q="Why do I need my private key?" a="Your wallet signs all transactions. We need the key to automate buybacks and LP." />
+              <FAQ q="Which wallet receives fees?" a="The wallet you connected. That's why the private key must be from that wallet." />
+              <FAQ q="When does LP get added?" a="Only after graduation (~$55k mcap). Before that, all fees go to buybacks." />
+              <FAQ q="Is it fully automatic?" a="Yes. Once you paste your private key, you don't need to do anything else." />
             </div>
-            <div className="space-y-2 sm:space-y-3">
-              <FaqItem 
-                q="why do i need my private key?" 
-                a="your connected wallet signs all transactions. we need the key to automate buybacks and lp."
-              />
-              <FaqItem 
-                q="which wallet receives the fees?" 
-                a="the wallet you connected. this is why the private key must be from that wallet."
-              />
-              <FaqItem 
-                q="when does lp get added?" 
-                a="only after graduation (~$55k mcap). before that, all fees go to buybacks."
-              />
-              <FaqItem 
-                q="do i need to do anything?" 
-                a="no. once you paste your private key, everything is automatic."
-              />
-              <FaqItem 
-                q="can i see the transactions?" 
-                a="yes. all transactions are on solscan and in the dashboard."
-              />
-            </div>
-          </section>
-        </div>
+          </div>
+
+        </section>
       </main>
     </div>
   );
 }
 
-function Arrow() {
+function Check({ accent, success }: { accent?: boolean; success?: boolean }) {
+  const bgColor = accent 
+    ? 'bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] shadow-md shadow-[var(--coral)]/20' 
+    : success 
+    ? 'bg-[var(--success)]' 
+    : 'bg-gradient-to-br from-[var(--coral)] to-[var(--orange)]';
+  
   return (
-    <div className="flex justify-center">
-      <svg className="w-4 h-4 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
+    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${bgColor}`}>
+      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
       </svg>
     </div>
   );
 }
 
-function LoopStep({ num, text, color }: { num: number; text: string; color: "green" | "purple" }) {
-  const bgColor = color === "green" ? "bg-[var(--accent)]" : "bg-[var(--purple)]";
-  
+function XMark() {
   return (
-    <div className="flex items-center gap-3 sm:gap-4">
-      <div className={`w-7 h-7 sm:w-8 sm:h-8 ${bgColor} text-black font-bold text-sm flex items-center justify-center flex-shrink-0`}>
-        {num}
-      </div>
-      <span className="text-sm">{text}</span>
+    <div className="w-6 h-6 rounded-full bg-white/60 border border-[var(--border)] flex items-center justify-center">
+      <svg className="w-3.5 h-3.5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
     </div>
   );
 }
 
-function DocStep({ num, title, desc }: { num: number; title: string; desc: string }) {
+function LoopStep({ num, text }: { num: string; text: string }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-3 sm:p-4 flex gap-3 sm:gap-4">
-      <div className="w-7 h-7 sm:w-8 sm:h-8 border border-[var(--accent)] text-[var(--accent)] font-bold text-sm flex items-center justify-center flex-shrink-0">
-        {num}
-      </div>
-      <div className="min-w-0">
-        <div className="font-bold text-sm mb-1">{title}</div>
-        <div className="text-xs text-[var(--text-muted)]">{desc}</div>
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-base font-semibold">{num}</div>
+      <span className="text-lg font-medium">{text}</span>
+    </div>
+  );
+}
+
+function Step({ num, title, desc }: { num: string; title: string; desc: string }) {
+  return (
+    <div className="glass p-5 rounded-[20px] flex items-start gap-4">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] text-white flex items-center justify-center font-semibold flex-shrink-0 shadow-md shadow-[var(--coral)]/20">{num}</div>
+      <div>
+        <div className="font-semibold text-lg">{title}</div>
+        <div className="text-sm text-[var(--text-muted)]">{desc}</div>
       </div>
     </div>
   );
 }
 
-function FeatureCard({ title, desc }: { title: string; desc: string }) {
+function Point({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-3 sm:p-4">
-      <div className="font-bold text-sm mb-1">{title}</div>
-      <div className="text-xs text-[var(--text-muted)]">{desc}</div>
+    <div className="glass p-5 rounded-[20px] flex items-center gap-4">
+      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--peach)] to-[var(--coral-soft)] flex items-center justify-center text-[var(--coral)]">
+        {icon}
+      </div>
+      <span className="font-medium">{text}</span>
     </div>
   );
 }
 
-function FaqItem({ q, a }: { q: string; a: string }) {
+function FAQ({ q, a }: { q: string; a: string }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-3 sm:p-4">
-      <div className="font-bold text-sm mb-1 sm:mb-2 text-[var(--accent)]">{q}</div>
-      <div className="text-xs text-[var(--text-secondary)]">{a}</div>
+    <div className="glass p-5 rounded-[20px]">
+      <div className="font-semibold text-lg mb-2">{q}</div>
+      <div className="text-[var(--text-secondary)] leading-relaxed">{a}</div>
     </div>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+    </svg>
+  );
+}
+
+function TrendIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+    </svg>
+  );
+}
+
+function BalanceIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
+    </svg>
+  );
+}
+
+function InfinityIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm0 0c0 1.657 1.007 3 2.25 3S21 13.657 21 12a9 9 0 10-2.636 6.364M16.5 12V8.25" />
+    </svg>
   );
 }

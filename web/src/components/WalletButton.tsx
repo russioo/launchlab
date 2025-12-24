@@ -23,22 +23,22 @@ export function WalletButton() {
     <button
       onClick={handleClick}
       disabled={connecting}
-      className={`w-full py-3 px-4 text-xs uppercase tracking-widest font-bold transition-all flex items-center justify-center gap-2 ${
+      className={`py-3 px-5 rounded-full text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
         publicKey
-          ? "bg-[var(--bg)] text-[var(--accent)] border border-[var(--accent)]"
-          : "bg-[var(--accent)] text-black hover:shadow-[0_0_20px_rgba(0,255,136,0.5)]"
+          ? "bg-white/80 text-[var(--text)] border border-white/60 hover:bg-white shadow-sm backdrop-blur-sm"
+          : "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white shadow-lg shadow-[var(--coral)]/20 hover:shadow-xl hover:shadow-[var(--coral)]/30 hover:-translate-y-0.5"
       }`}
     >
       <span
-        className={`w-2 h-2 ${
-          publicKey ? "bg-[var(--accent)] animate-pulse" : "bg-black/30"
+        className={`w-2 h-2 rounded-full ${
+          publicKey ? "bg-[var(--success)]" : "bg-white/50"
         }`}
       />
       {connecting
-        ? "connecting..."
+        ? "Connecting..."
         : publicKey
         ? formatAddress(publicKey.toBase58())
-        : "connect"}
+        : "Connect"}
     </button>
   );
 }

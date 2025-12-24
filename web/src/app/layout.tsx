@@ -5,8 +5,12 @@ import { WalletProvider } from "@/components/WalletProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LIQUIDIFY | Auto-Liquidity Token Launcher",
-  description: "Launch tokens on Pumpfun with auto buybacks and liquidity",
+  title: "SURGE — Self-Sustaining Liquidity Engine",
+  description: "Launch tokens with automatic buybacks and self-sustaining liquidity. The future of token launches.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -16,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="antialiased">
+      <body className="antialiased noise">
         <WalletProvider>{children}</WalletProvider>
       </body>
     </html>

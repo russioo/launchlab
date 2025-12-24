@@ -577,6 +577,64 @@ tokenRoutes.delete("/cleanup", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/tokens/activity/recent - Get recent activity across all tokens
+ * NOTE: Must be before /:id route to not be captured
+ */
+tokenRoutes.get("/activity/recent", async (req: Request, res: Response) => {
+  try {
+    const { limit = 20 } = req.query;
+
+    // Get recent feed history with token info
+    const { data, error } = await supabase
+      .from("feed_history")
+      .select(`
+        id,
+        type,
+        signature,
+        sol_amount,
+        token_amount,
+        created_at,
+        tokens:token_id (
+          id,
+          name,
+          symbol,
+          image_url,
+          mint
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(Number(limit));
+
+    if (error) {
+      console.error("Error fetching activity:", error);
+      return res.status(500).json({ error: "Failed to fetch activity" });
+    }
+
+    // Transform data for frontend
+    const activity = (data || []).map((item: any) => ({
+      id: item.id,
+      type: item.type,
+      signature: item.signature,
+      solAmount: Number(item.sol_amount) || 0,
+      tokenAmount: Number(item.token_amount) || 0,
+      createdAt: item.created_at,
+      token: item.tokens ? {
+        id: item.tokens.id,
+        name: item.tokens.name,
+        symbol: item.tokens.symbol,
+        imageUrl: item.tokens.image_url,
+        mint: item.tokens.mint,
+      } : null,
+    }));
+
+    res.json(activity);
+  } catch (error) {
+    console.error("Error fetching activity:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
  * GET /api/tokens/:id/history - Get feed history for a token
  */
 tokenRoutes.get("/:id/history", async (req: Request, res: Response) => {

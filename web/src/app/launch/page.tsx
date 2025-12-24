@@ -1,125 +1,122 @@
-import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
 import { CreateTokenForm } from "@/components/CreateTokenForm";
 
 export default function Launch() {
   return (
-    <div className="min-h-screen">
-      <Sidebar />
+    <div className="min-h-screen relative">
+      {/* Organic flowing background */}
+      <div className="organic-bg">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
+      </div>
+
+      <Header />
       
-      {/* Main content - offset for sidebar on desktop, add top padding for mobile header */}
-      <main className="lg:ml-64 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
-        {/* Header */}
-        <header className="mb-6 sm:mb-8">
-          <h1 className="font-pixel text-lg sm:text-xl text-[var(--accent)] glow-green mb-2">
-            CREATE TOKEN
+      <main className="relative z-10 pt-28">
+        {/* Hero */}
+        <section className="max-w-6xl mx-auto px-5 py-8 lg:py-12">
+          <h1 className="text-4xl lg:text-5xl font-display tracking-tight mb-3">
+            <span className="hero-gradient">Launch</span> token
           </h1>
-          <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
-            launch your token with auto-liquidity technology
+          <p className="text-lg text-[var(--text-secondary)]">
+            Deploy with self-sustaining liquidity automation
           </p>
-        </header>
+        </section>
 
-        {/* Content - stack on mobile, grid on desktop */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-6 lg:gap-8">
-          {/* Form */}
-          <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 sm:p-6 order-2 lg:order-1">
-            <CreateTokenForm />
-          </div>
-
-          {/* Info Panel - show first on mobile */}
-          <div className="space-y-4 order-1 lg:order-2">
-            {/* What you get */}
-            <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-4 sm:p-5">
-              <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
-                what you get
-              </div>
-              <div className="space-y-2 sm:space-y-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-[var(--accent)]">+</span>
-                  <span>token on pumpfun</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[var(--accent)]">+</span>
-                  <span>0.05 sol dev buy included</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[var(--accent)]">+</span>
-                  <span>auto fee claiming</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[var(--accent)]">+</span>
-                  <span>buybacks every 1 min</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[var(--purple)]">+</span>
-                  <span>lp after graduation</span>
-                </div>
-              </div>
+        <section className="max-w-6xl mx-auto px-5 pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-8">
+            {/* Form */}
+            <div className="glass rounded-[32px] p-6 lg:p-8">
+              <CreateTokenForm />
             </div>
 
-            {/* Private Key Info */}
-            <div className="border border-red-500/30 bg-red-500/5 p-4 sm:p-5">
-              <div className="text-[10px] uppercase tracking-widest text-red-400 mb-2 sm:mb-3">
-                connected wallet key required
-              </div>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2">
-                you MUST paste the private key of the wallet you have connected.
-              </p>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                this wallet will:
-              </p>
-              <ul className="text-xs text-[var(--text-muted)] mt-1 space-y-1">
-                <li>→ receive all creator fees</li>
-                <li>→ run buybacks automatically</li>
-                <li>→ add liquidity after graduation</li>
-              </ul>
-              <p className="text-[10px] text-red-400/70 mt-3">
-                phantom: settings → security → export private key
-              </p>
-            </div>
-
-            {/* Important Note */}
-            <div className="border border-yellow-500/30 bg-yellow-500/5 p-4 sm:p-5">
-              <div className="text-[10px] uppercase tracking-widest text-yellow-500 mb-2 sm:mb-3">
-                lp after graduation
-              </div>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                liquidity only added after graduation (~$55k mcap). 
-                until then, all fees go to buybacks.
-              </p>
-            </div>
-
-            {/* Every 1 min */}
-            <div className="border border-[var(--purple)]/30 bg-[var(--purple-muted)] p-4 sm:p-5">
-              <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
-                every 1 minute
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--accent)]">1.</span>
-                  <span>claim creator fees</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--accent)]">2.</span>
-                  <span>buyback your token</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--purple)]">3.</span>
-                  <span>add to lp (after graduation)</span>
+            {/* Info */}
+            <div className="space-y-5">
+              {/* Features */}
+              <div className="glass rounded-[24px] p-6">
+                <h3 className="font-display text-lg mb-5">What you get</h3>
+                <div className="space-y-4">
+                  <Feature text="Token on PumpFun" />
+                  <Feature text="0.05 SOL dev buy" />
+                  <Feature text="Auto fee claiming" />
+                  <Feature text="Buybacks every minute" />
+                  <Feature text="LP after graduation" accent />
                 </div>
               </div>
-            </div>
 
-            {/* Powered by */}
-            <div className="border border-[var(--border)] p-3 sm:p-4 flex items-center justify-center gap-3 sm:gap-4">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">solana</span>
-              <span className="text-[var(--border)]">|</span>
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">pumpfun</span>
-              <span className="text-[var(--border)]">|</span>
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">pumpswap</span>
+              {/* Key warning */}
+              <div className="rounded-[24px] p-6 bg-gradient-to-br from-[var(--peach)]/50 to-[var(--coral-soft)]/30 border border-[var(--coral)]/20">
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[var(--coral)]/20">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold mb-1">Private key needed</div>
+                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                      Paste the key of your connected wallet to enable automation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Process */}
+              <div className="rounded-[24px] p-6 bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] text-white shadow-xl shadow-[var(--coral)]/20">
+                <div className="text-sm text-white/60 font-medium mb-5">The loop</div>
+                <div className="space-y-4">
+                  <LoopStep num="1" text="Claim fees" />
+                  <LoopStep num="2" text="Buyback token" />
+                  <LoopStep num="3" text="Add to LP" />
+                </div>
+                <div className="text-sm text-white/50 mt-5 pt-4 border-t border-white/10">
+                  Repeats every 60 seconds
+                </div>
+              </div>
+
+              {/* Tech */}
+              <div className="flex items-center justify-center gap-5 py-4 text-sm text-[var(--text-muted)]">
+                <span className="font-medium">Solana</span>
+                <Dot />
+                <span className="font-medium">PumpFun</span>
+                <Dot />
+                <span className="font-medium">Jupiter</span>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
       </main>
     </div>
   );
+}
+
+function Feature({ text, accent }: { text: string; accent?: boolean }) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+        accent 
+          ? 'bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] shadow-md shadow-[var(--coral)]/20' 
+          : 'bg-white/80 border border-[var(--border)]'
+      }`}>
+        <svg className={`w-4 h-4 ${accent ? 'text-white' : 'text-[var(--coral)]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <span className="font-medium">{text}</span>
+    </div>
+  );
+}
+
+function LoopStep({ num, text }: { num: string; text: string }) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold">{num}</div>
+      <span className="font-medium">{text}</span>
+    </div>
+  );
+}
+
+function Dot() {
+  return <span className="w-1.5 h-1.5 rounded-full bg-[var(--coral-soft)]" />;
 }

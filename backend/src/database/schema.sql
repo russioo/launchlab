@@ -1,4 +1,4 @@
--- LIQUIDIFY Database Schema
+-- SURGE Database Schema
 -- Run this in Supabase SQL Editor
 
 -- Drop existing tables if needed

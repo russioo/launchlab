@@ -184,5 +184,33 @@ export async function checkHealth(): Promise<{ status: string; timestamp: string
   return response.json();
 }
 
+/**
+ * Activity item type
+ */
+export interface ActivityItem {
+  id: string;
+  type: "claim_fees" | "buyback" | "add_liquidity" | "create";
+  signature: string;
+  solAmount: number;
+  tokenAmount: number;
+  createdAt: string;
+  token: {
+    id: string;
+    name: string;
+    symbol: string;
+    imageUrl: string | null;
+    mint: string;
+  } | null;
+}
+
+/**
+ * Get recent activity across all tokens
+ */
+export async function getRecentActivity(limit = 20): Promise<ActivityItem[]> {
+  const response = await fetch(`${API_URL}/api/tokens/activity/recent?limit=${limit}`);
+  if (!response.ok) throw new Error("Failed to fetch activity");
+  return response.json();
+}
+
 
 

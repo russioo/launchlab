@@ -48,7 +48,7 @@ import("./routes/tokens.js").then(({ tokenRoutes }) => {
 // Root route
 app.get("/", (req, res) => {
   res.json({ 
-    name: "LIQUIDIFY API",
+    name: "SURGE API",
     version: "1.0.0",
     status: "running",
     endpoints: {
@@ -115,7 +115,7 @@ setTimeout(async () => {
 app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
-║                   LIQUIDIFY BACKEND                   ║
+║                     SURGE BACKEND                     ║
 ╠═══════════════════════════════════════════════════════╣
 ║  Server:    http://0.0.0.0:${PORT}                        ║
 ║  Health:    /health                                    ║

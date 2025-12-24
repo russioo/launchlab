@@ -5,10 +5,11 @@ export default function Docs() {
     <div className="min-h-screen">
       <Sidebar />
       
-      <main className="ml-64 p-8">
+      {/* Main content - offset for sidebar on desktop, add top padding for mobile header */}
+      <main className="lg:ml-64 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
         {/* Header */}
-        <header className="mb-8">
-          <h1 className="font-pixel text-xl text-[var(--accent)] glow-green mb-2">
+        <header className="mb-6 sm:mb-8">
+          <h1 className="font-pixel text-lg sm:text-xl text-[var(--accent)] glow-green mb-2">
             DOCS
           </h1>
           <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
@@ -16,19 +17,19 @@ export default function Docs() {
           </p>
         </header>
 
-        <div className="max-w-3xl space-y-8">
+        <div className="max-w-3xl space-y-6 sm:space-y-8">
           {/* Overview */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
               overview
             </div>
-            <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-6">
-              <p className="text-[var(--text-secondary)] leading-relaxed mb-4">
+            <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 sm:p-6">
+              <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed mb-4">
                 liquidify is a self-replenishing liquidity engine for pumpfun tokens. 
                 we automatically claim your creator fees and use them to buyback your token 
                 and add liquidity to the pool.
               </p>
-              <p className="text-[var(--text-secondary)] leading-relaxed">
+              <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
                 the result: constant buy pressure, growing liquidity, and a more stable token.
               </p>
             </div>
@@ -36,16 +37,16 @@ export default function Docs() {
 
           {/* Two Phases */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
               two phases
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border border-yellow-500/30 bg-yellow-500/5 p-5">
-                <div className="text-yellow-500 font-bold text-sm mb-3">BONDING CURVE</div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="border border-yellow-500/30 bg-yellow-500/5 p-4 sm:p-5">
+                <div className="text-yellow-500 font-bold text-sm mb-2 sm:mb-3">BONDING CURVE</div>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2 sm:mb-3">
                   while your token is on the bonding curve (before $55k market cap):
                 </p>
-                <ul className="space-y-2 text-sm">
+                <ul className="space-y-1 sm:space-y-2 text-sm">
                   <li className="flex items-center gap-2">
                     <span className="text-[var(--accent)]">+</span>
                     <span>claim creator fees</span>
@@ -60,12 +61,12 @@ export default function Docs() {
                   </li>
                 </ul>
               </div>
-              <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-5">
-                <div className="text-[var(--accent)] font-bold text-sm mb-3">GRADUATED</div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">
+              <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-4 sm:p-5">
+                <div className="text-[var(--accent)] font-bold text-sm mb-2 sm:mb-3">GRADUATED</div>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2 sm:mb-3">
                   after graduation to pumpswap:
                 </p>
-                <ul className="space-y-2 text-sm">
+                <ul className="space-y-1 sm:space-y-2 text-sm">
                   <li className="flex items-center gap-2">
                     <span className="text-[var(--accent)]">+</span>
                     <span>claim creator fees</span>
@@ -85,11 +86,11 @@ export default function Docs() {
 
           {/* The Loop */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-4">
-              the 5-minute loop
+            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
+              the 1-minute loop
             </div>
-            <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-6">
-              <div className="space-y-4">
+            <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-4 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
                 <LoopStep num={1} text="claim all creator fees" color="green" />
                 <Arrow />
                 <LoopStep num={2} text="buyback tokens (via jupiter)" color="green" />
@@ -105,17 +106,17 @@ export default function Docs() {
 
           {/* How to use */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
               how to use
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <DocStep num={1} title="connect wallet" desc="connect the wallet you want to use for automation" />
               <DocStep num={2} title="create token" desc="fill in token details" />
               <DocStep num={3} title="paste private key" desc="paste the private key OF THE CONNECTED WALLET" />
               <DocStep num={4} title="automatic" desc="your wallet claims fees, buybacks, and adds lp" />
             </div>
-            <div className="border border-red-500/30 bg-red-500/5 p-4 mt-4">
-              <div className="text-red-400 font-bold text-xs mb-2">⚠ CONNECTED WALLET PRIVATE KEY</div>
+            <div className="border border-red-500/30 bg-red-500/5 p-3 sm:p-4 mt-3 sm:mt-4">
+              <div className="text-red-400 font-bold text-xs mb-2">CONNECTED WALLET PRIVATE KEY</div>
               <p className="text-xs text-[var(--text-muted)]">
                 the private key MUST be from the wallet you have connected. 
                 this is the wallet that receives creator fees and runs all automation.
@@ -128,11 +129,11 @@ export default function Docs() {
 
           {/* Why Liquidity Matters */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
               why liquidity matters
             </div>
-            <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-6">
-              <ul className="space-y-3 text-sm text-[var(--text-secondary)]">
+            <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 sm:p-6">
+              <ul className="space-y-2 sm:space-y-3 text-sm text-[var(--text-secondary)]">
                 <li className="flex items-start gap-3">
                   <span className="text-[var(--accent)]">→</span>
                   <span>deeper liquidity = less slippage for buyers</span>
@@ -155,10 +156,10 @@ export default function Docs() {
 
           {/* Features */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
               features
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <FeatureCard title="your wallet" desc="all operations on your connected wallet" />
               <FeatureCard title="auto-claim" desc="fees claimed every minute" />
               <FeatureCard title="1 min cycles" desc="runs 24/7 automatically" />
@@ -168,10 +169,10 @@ export default function Docs() {
 
           {/* FAQ */}
           <section>
-            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
               faq
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <FaqItem 
                 q="why do i need my private key?" 
                 a="your connected wallet signs all transactions. we need the key to automate buybacks and lp."
@@ -214,8 +215,8 @@ function LoopStep({ num, text, color }: { num: number; text: string; color: "gre
   const bgColor = color === "green" ? "bg-[var(--accent)]" : "bg-[var(--purple)]";
   
   return (
-    <div className="flex items-center gap-4">
-      <div className={`w-8 h-8 ${bgColor} text-black font-bold text-sm flex items-center justify-center`}>
+    <div className="flex items-center gap-3 sm:gap-4">
+      <div className={`w-7 h-7 sm:w-8 sm:h-8 ${bgColor} text-black font-bold text-sm flex items-center justify-center flex-shrink-0`}>
         {num}
       </div>
       <span className="text-sm">{text}</span>
@@ -225,11 +226,11 @@ function LoopStep({ num, text, color }: { num: number; text: string; color: "gre
 
 function DocStep({ num, title, desc }: { num: number; title: string; desc: string }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 flex gap-4">
-      <div className="w-8 h-8 border border-[var(--accent)] text-[var(--accent)] font-bold text-sm flex items-center justify-center flex-shrink-0">
+    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-3 sm:p-4 flex gap-3 sm:gap-4">
+      <div className="w-7 h-7 sm:w-8 sm:h-8 border border-[var(--accent)] text-[var(--accent)] font-bold text-sm flex items-center justify-center flex-shrink-0">
         {num}
       </div>
-      <div>
+      <div className="min-w-0">
         <div className="font-bold text-sm mb-1">{title}</div>
         <div className="text-xs text-[var(--text-muted)]">{desc}</div>
       </div>
@@ -239,7 +240,7 @@ function DocStep({ num, title, desc }: { num: number; title: string; desc: strin
 
 function FeatureCard({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4">
+    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-3 sm:p-4">
       <div className="font-bold text-sm mb-1">{title}</div>
       <div className="text-xs text-[var(--text-muted)]">{desc}</div>
     </div>
@@ -248,8 +249,8 @@ function FeatureCard({ title, desc }: { title: string; desc: string }) {
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   return (
-    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4">
-      <div className="font-bold text-sm mb-2 text-[var(--accent)]">{q}</div>
+    <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-3 sm:p-4">
+      <div className="font-bold text-sm mb-1 sm:mb-2 text-[var(--accent)]">{q}</div>
       <div className="text-xs text-[var(--text-secondary)]">{a}</div>
     </div>
   );

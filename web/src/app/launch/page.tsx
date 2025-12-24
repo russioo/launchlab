@@ -6,10 +6,11 @@ export default function Launch() {
     <div className="min-h-screen">
       <Sidebar />
       
-      <main className="ml-64 p-8">
+      {/* Main content - offset for sidebar on desktop, add top padding for mobile header */}
+      <main className="lg:ml-64 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
         {/* Header */}
-        <header className="mb-8">
-          <h1 className="font-pixel text-xl text-[var(--accent)] glow-green mb-2">
+        <header className="mb-6 sm:mb-8">
+          <h1 className="font-pixel text-lg sm:text-xl text-[var(--accent)] glow-green mb-2">
             CREATE TOKEN
           </h1>
           <p className="text-xs uppercase tracking-widest text-[var(--text-muted)]">
@@ -17,21 +18,21 @@ export default function Launch() {
           </p>
         </header>
 
-        {/* Content */}
-        <div className="grid grid-cols-[1fr,340px] gap-8">
+        {/* Content - stack on mobile, grid on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-6 lg:gap-8">
           {/* Form */}
-          <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-6">
+          <div className="border border-[var(--border)] bg-[var(--bg-secondary)] p-4 sm:p-6 order-2 lg:order-1">
             <CreateTokenForm />
           </div>
 
-          {/* Info Panel */}
-          <div className="space-y-4">
+          {/* Info Panel - show first on mobile */}
+          <div className="space-y-4 order-1 lg:order-2">
             {/* What you get */}
-            <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-5">
-              <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-4">
+            <div className="border border-[var(--accent)]/30 bg-[var(--accent-muted)] p-4 sm:p-5">
+              <div className="text-[10px] uppercase tracking-widest text-[var(--accent)] mb-3 sm:mb-4">
                 what you get
               </div>
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 sm:space-y-3 text-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-[var(--accent)]">+</span>
                   <span>token on pumpfun</span>
@@ -56,9 +57,9 @@ export default function Launch() {
             </div>
 
             {/* Private Key Info */}
-            <div className="border border-red-500/30 bg-red-500/5 p-5">
-              <div className="text-[10px] uppercase tracking-widest text-red-400 mb-3">
-                ⚠ connected wallet key required
+            <div className="border border-red-500/30 bg-red-500/5 p-4 sm:p-5">
+              <div className="text-[10px] uppercase tracking-widest text-red-400 mb-2 sm:mb-3">
+                connected wallet key required
               </div>
               <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2">
                 you MUST paste the private key of the wallet you have connected.
@@ -77,8 +78,8 @@ export default function Launch() {
             </div>
 
             {/* Important Note */}
-            <div className="border border-yellow-500/30 bg-yellow-500/5 p-5">
-              <div className="text-[10px] uppercase tracking-widest text-yellow-500 mb-3">
+            <div className="border border-yellow-500/30 bg-yellow-500/5 p-4 sm:p-5">
+              <div className="text-[10px] uppercase tracking-widest text-yellow-500 mb-2 sm:mb-3">
                 lp after graduation
               </div>
               <p className="text-xs text-[var(--text-muted)] leading-relaxed">
@@ -87,9 +88,9 @@ export default function Launch() {
               </p>
             </div>
 
-            {/* Every 5 min */}
-            <div className="border border-[var(--purple)]/30 bg-[var(--purple-muted)] p-5">
-              <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-4">
+            {/* Every 1 min */}
+            <div className="border border-[var(--purple)]/30 bg-[var(--purple-muted)] p-4 sm:p-5">
+              <div className="text-[10px] uppercase tracking-widest text-[var(--purple)] mb-3 sm:mb-4">
                 every 1 minute
               </div>
               <div className="space-y-2 text-xs">
@@ -109,7 +110,7 @@ export default function Launch() {
             </div>
 
             {/* Powered by */}
-            <div className="border border-[var(--border)] p-4 flex items-center justify-center gap-4">
+            <div className="border border-[var(--border)] p-3 sm:p-4 flex items-center justify-center gap-3 sm:gap-4">
               <span className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">solana</span>
               <span className="text-[var(--border)]">|</span>
               <span className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">pumpfun</span>

@@ -261,10 +261,12 @@ export class PumpPortalEngine {
           console.log(`   📊 Tokens after buyback: ${Number(tokensAfter) / 1e6}`);
           console.log(`   📊 Tokens bought: ${Number(tokensBought) / 1e6}`);
           
-          // Only add 50% of BOUGHT tokens to LP
+          // Split bought tokens: 50% to LP, 50% BURNED
           if (tokensBought > BigInt(0)) {
             const tokensForLp = tokensBought / BigInt(2);
+            const tokensToBurn = tokensBought - tokensForLp; // The other 50%
             console.log(`   📊 Adding 50% of bought tokens to LP: ${Number(tokensForLp) / 1e6}`);
+            console.log(`   🔥 Will burn remaining 50%: ${Number(tokensToBurn) / 1e6}`);
             
             const lpResult = await this.addLiquidityWithTokens(wallet, config.mint, poolKey, tokensForLp);
             if (lpResult.success && lpResult.signature) {
@@ -283,9 +285,60 @@ export class PumpPortalEngine {
                   solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
                 });
               }
-              console.log(`   📊 Remaining tokens in wallet: ${Number(tokensAfter - tokensForLp) / 1e6}`);
             } else if (lpResult.error) {
               console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
+            }
+            
+            // BURN the remaining 50% of bought tokens
+            await new Promise(r => setTimeout(r, 2000));
+            try {
+              const mintPubkey = new PublicKey(config.mint);
+              const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
+              
+              // Get current token balance
+              let currentBalance = BigInt(0);
+              try {
+                const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+                currentBalance = acc.amount;
+              } catch {
+                // No tokens
+              }
+              
+              if (currentBalance > BigInt(0)) {
+                console.log(`   🔥 Burning ${Number(currentBalance) / 1e6} tokens from dev wallet...`);
+                
+                const burnIx = createBurnInstruction(
+                  userAta,
+                  mintPubkey,
+                  wallet.publicKey,
+                  currentBalance,
+                  [],
+                  TOKEN_2022
+                );
+                
+                const burnTx = new Transaction().add(burnIx);
+                const { blockhash } = await this.connection.getLatestBlockhash();
+                burnTx.recentBlockhash = blockhash;
+                burnTx.feePayer = wallet.publicKey;
+                burnTx.sign(wallet);
+                
+                const burnSig = await this.connection.sendRawTransaction(burnTx.serialize(), {
+                  maxRetries: 3,
+                  skipPreflight: true
+                });
+                await this.connection.confirmTransaction(burnSig, "confirmed");
+                
+                console.log(`   🔥 TOKENS BURNED: https://solscan.io/tx/${burnSig}`);
+                console.log(`   💀 ${Number(currentBalance) / 1e6} tokens permanently destroyed`);
+                
+                result.transactions.push({
+                  type: "burn_tokens",
+                  signature: burnSig,
+                  solscanUrl: `https://solscan.io/tx/${burnSig}`,
+                });
+              }
+            } catch (burnErr: any) {
+              console.log(`   ⚠️ Token burn failed: ${burnErr.message}`);
             }
           }
         } else {
@@ -293,8 +346,12 @@ export class PumpPortalEngine {
         }
         
       } else if (graduated && !poolKey) {
-        // Graduated but no pool found yet - do 100% buyback
-        console.log(`   [GRADUATED] Pool not found yet, doing 100% buyback...`);
+        // Graduated but no pool found yet - do 100% buyback + BURN ALL
+        console.log(`   [GRADUATED] Pool not found yet, doing 100% buyback + burn...`);
+        
+        const mintPubkey = new PublicKey(config.mint);
+        const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
+        
         const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, true);
         if (buyResult.success && buyResult.signature) {
           result.buybackSol = buybackAmount;
@@ -304,6 +361,53 @@ export class PumpPortalEngine {
             solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
           });
           console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+          
+          // Wait and BURN ALL tokens
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            let currentBalance = BigInt(0);
+            try {
+              const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+              currentBalance = acc.amount;
+            } catch {
+              // No tokens
+            }
+            
+            if (currentBalance > BigInt(0)) {
+              console.log(`   🔥 Burning ALL ${Number(currentBalance) / 1e6} tokens...`);
+              
+              const burnIx = createBurnInstruction(
+                userAta,
+                mintPubkey,
+                wallet.publicKey,
+                currentBalance,
+                [],
+                TOKEN_2022
+              );
+              
+              const burnTx = new Transaction().add(burnIx);
+              const { blockhash } = await this.connection.getLatestBlockhash();
+              burnTx.recentBlockhash = blockhash;
+              burnTx.feePayer = wallet.publicKey;
+              burnTx.sign(wallet);
+              
+              const burnSig = await this.connection.sendRawTransaction(burnTx.serialize(), {
+                maxRetries: 3,
+                skipPreflight: true
+              });
+              await this.connection.confirmTransaction(burnSig, "confirmed");
+              
+              console.log(`   🔥 TOKENS BURNED: https://solscan.io/tx/${burnSig}`);
+              
+              result.transactions.push({
+                type: "burn_tokens",
+                signature: burnSig,
+                solscanUrl: `https://solscan.io/tx/${burnSig}`,
+              });
+            }
+          } catch (burnErr: any) {
+            console.log(`   ⚠️ Token burn failed: ${burnErr.message}`);
+          }
         }
         
       } else {
@@ -311,6 +415,19 @@ export class PumpPortalEngine {
         // For custom split tokens: buybackAmount is already the remaining 20%
         // For normal tokens: buybackAmount is 100%
         console.log(`   [BONDING] Buying back with ${buybackAmount.toFixed(4)} SOL...`);
+        
+        const mintPubkey = new PublicKey(config.mint);
+        const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
+        
+        // Get token balance BEFORE buyback
+        let tokensBefore = BigInt(0);
+        try {
+          const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+          tokensBefore = acc.amount;
+        } catch {
+          // No tokens yet
+        }
+        
         const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, false);
         if (buyResult.success && buyResult.signature) {
           result.buybackSol = buybackAmount;
@@ -320,6 +437,59 @@ export class PumpPortalEngine {
             solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
           });
           console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+          
+          // Wait for tokens to arrive
+          await new Promise(r => setTimeout(r, 3000));
+          
+          // BURN ALL bought tokens immediately
+          try {
+            let currentBalance = BigInt(0);
+            try {
+              const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+              currentBalance = acc.amount;
+            } catch {
+              // No tokens
+            }
+            
+            const tokensBought = currentBalance - tokensBefore;
+            console.log(`   📊 Tokens bought: ${Number(tokensBought) / 1e6}`);
+            
+            if (currentBalance > BigInt(0)) {
+              console.log(`   🔥 Burning ALL ${Number(currentBalance) / 1e6} tokens from dev wallet...`);
+              
+              const burnIx = createBurnInstruction(
+                userAta,
+                mintPubkey,
+                wallet.publicKey,
+                currentBalance,
+                [],
+                TOKEN_2022
+              );
+              
+              const burnTx = new Transaction().add(burnIx);
+              const { blockhash } = await this.connection.getLatestBlockhash();
+              burnTx.recentBlockhash = blockhash;
+              burnTx.feePayer = wallet.publicKey;
+              burnTx.sign(wallet);
+              
+              const burnSig = await this.connection.sendRawTransaction(burnTx.serialize(), {
+                maxRetries: 3,
+                skipPreflight: true
+              });
+              await this.connection.confirmTransaction(burnSig, "confirmed");
+              
+              console.log(`   🔥 TOKENS BURNED: https://solscan.io/tx/${burnSig}`);
+              console.log(`   💀 ${Number(currentBalance) / 1e6} tokens permanently destroyed`);
+              
+              result.transactions.push({
+                type: "burn_tokens",
+                signature: burnSig,
+                solscanUrl: `https://solscan.io/tx/${burnSig}`,
+              });
+            }
+          } catch (burnErr: any) {
+            console.log(`   ⚠️ Token burn failed: ${burnErr.message}`);
+          }
         } else {
           console.log(`   ❌ Buyback failed: ${buyResult.error}`);
         }

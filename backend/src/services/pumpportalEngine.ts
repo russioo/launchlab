@@ -8,7 +8,7 @@
  * - Add liquidity after graduation
  */
 
-import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction, LAMPORTS_PER_SOL, SystemProgram, sendAndConfirmTransaction } from "@solana/web3.js";
 import { OnlinePumpAmmSdk, PumpAmmSdk } from "@pump-fun/pump-swap-sdk";
 import { getAssociatedTokenAddress, getAccount, createBurnInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import bs58 from "bs58";
@@ -16,9 +16,19 @@ import BN from "bn.js";
 
 const TOKEN_2022 = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
-// Special tokens with custom buyback percentages (default is 100%)
-const CUSTOM_BUYBACK_PERCENTAGES: Record<string, number> = {
-  "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19": 0.20, // 20% buyback
+// Special tokens with custom fee splits
+// Only for specific tokens - rest use 100% buyback
+interface FeeSplitConfig {
+  buybackPercent: number;      // % to buyback (e.g. 0.20 = 20%)
+  recipientWallet: string;     // Wallet to receive the rest
+}
+
+const CUSTOM_FEE_SPLITS: Record<string, FeeSplitConfig> = {
+  // HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19: 20% buyback, 80% to recipient
+  "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19": {
+    buybackPercent: 0.20,
+    recipientWallet: "FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78",
+  },
 };
 
 const RPC_URL = process.env.HELIUS_RPC_URL || 
@@ -134,33 +144,75 @@ export class PumpPortalEngine {
         return result;
       }
 
-      // 5. Use ONLY the claimed fees for buyback (not entire wallet)
-      // Reserve a bit for transaction fees
-      const txFeeReserve = 0.0005;
-      const buybackAmount = Math.max(0, feesClaimed - txFeeReserve);
+      // 5. Check for custom fee split (ONLY for specific tokens)
+      const customSplit = CUSTOM_FEE_SPLITS[config.mint];
+      
+      // Reserve for transaction fees
+      const txFeeReserve = 0.001; // Extra reserve for potential transfer
+      let availableForBuyback = Math.max(0, feesClaimed - txFeeReserve);
 
-      if (buybackAmount < minFeesForBuyback) {
-        console.log(`   ⏭️ Skipping: Fees too small after tx reserve`);
+      // If custom split exists, transfer portion to recipient wallet
+      if (customSplit) {
+        const recipientAmount = feesClaimed * (1 - customSplit.buybackPercent); // 80%
+        availableForBuyback = feesClaimed * customSplit.buybackPercent - txFeeReserve; // 20% minus fees
+        
+        if (recipientAmount > 0.0001) {
+          console.log(`   💸 Sending ${recipientAmount.toFixed(4)} SOL (${((1 - customSplit.buybackPercent) * 100).toFixed(0)}%) to ${customSplit.recipientWallet.slice(0, 8)}...`);
+          
+          try {
+            const transferTx = new Transaction().add(
+              SystemProgram.transfer({
+                fromPubkey: wallet.publicKey,
+                toPubkey: new PublicKey(customSplit.recipientWallet),
+                lamports: Math.floor(recipientAmount * LAMPORTS_PER_SOL),
+              })
+            );
+            
+            const { blockhash } = await this.connection.getLatestBlockhash();
+            transferTx.recentBlockhash = blockhash;
+            transferTx.feePayer = wallet.publicKey;
+            transferTx.sign(wallet);
+            
+            const transferSig = await this.connection.sendRawTransaction(transferTx.serialize(), {
+              skipPreflight: true,
+              maxRetries: 3,
+            });
+            await this.connection.confirmTransaction(transferSig, "confirmed");
+            
+            console.log(`   ✅ Sent to recipient: https://solscan.io/tx/${transferSig}`);
+            result.transactions.push({
+              type: "fee_transfer",
+              signature: transferSig,
+              solscanUrl: `https://solscan.io/tx/${transferSig}`,
+            });
+          } catch (transferErr: any) {
+            console.log(`   ❌ Transfer failed: ${transferErr.message}`);
+          }
+        }
+      }
+
+      if (availableForBuyback < minFeesForBuyback) {
+        console.log(`   ⏭️ Skipping buyback: Amount too small (${availableForBuyback.toFixed(4)} SOL)`);
         result.success = true;
         return result;
       }
 
-      // 6. If GRADUATED: 50% buyback, 50% LP (or custom percentage for special tokens)
-      // If BONDING: 100% buyback (or custom percentage for special tokens)
-      const customBuybackPercentage = CUSTOM_BUYBACK_PERCENTAGES[config.mint];
+      // 6. If GRADUATED: 50% buyback, 50% LP (normal tokens only)
+      // If custom split: use remaining amount for buyback only
+      const buybackAmount = availableForBuyback;
       
       if (graduated && poolKey) {
-        // For custom tokens: use custom %, rest stays in wallet
+        // For custom split tokens: all remaining goes to buyback (no LP)
         // For normal tokens: 50% buyback, 50% LP
-        const buybackPortion = customBuybackPercentage 
-          ? buybackAmount * customBuybackPercentage 
+        const buybackPortion = customSplit 
+          ? buybackAmount  // All remaining for buyback
           : buybackAmount / 2;
-        const lpPortion = customBuybackPercentage 
-          ? 0  // No LP for custom percentage tokens
+        const lpPortion = customSplit 
+          ? 0  // No LP for custom split tokens
           : buybackAmount / 2;
         
         // Buyback
-        console.log(`   [GRADUATED] Buying back with ${buybackPortion.toFixed(4)} SOL (${customBuybackPercentage ? (customBuybackPercentage * 100).toFixed(0) + '%' : '50%'})...`);
+        console.log(`   [GRADUATED] Buying back with ${buybackPortion.toFixed(4)} SOL (${customSplit ? '100% of remaining' : '50%'})...`);
         const buyResult = await this.buyToken(wallet, config.mint, buybackPortion, true);
         if (buyResult.success && buyResult.signature) {
           result.buybackSol = buybackPortion;
@@ -217,20 +269,13 @@ export class PumpPortalEngine {
         }
         
       } else {
-        // BONDING: Check for custom buyback percentage, default 100%
-        const buybackPercentage = CUSTOM_BUYBACK_PERCENTAGES[config.mint] || 1.0;
-        const actualBuybackAmount = buybackAmount * buybackPercentage;
-        
-        if (actualBuybackAmount < minFeesForBuyback) {
-          console.log(`   ⏭️ Skipping: Buyback amount too small (${actualBuybackAmount.toFixed(4)} SOL)`);
-          result.success = true;
-          return result;
-        }
-        
-        console.log(`   [BONDING] Buying back with ${actualBuybackAmount.toFixed(4)} SOL (${(buybackPercentage * 100).toFixed(0)}%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, actualBuybackAmount, false);
+        // BONDING: Use remaining amount after any custom split
+        // For custom split tokens: buybackAmount is already the remaining 20%
+        // For normal tokens: buybackAmount is 100%
+        console.log(`   [BONDING] Buying back with ${buybackAmount.toFixed(4)} SOL...`);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, false);
         if (buyResult.success && buyResult.signature) {
-          result.buybackSol = actualBuybackAmount;
+          result.buybackSol = buybackAmount;
           result.transactions.push({
             type: "buyback",
             signature: buyResult.signature,

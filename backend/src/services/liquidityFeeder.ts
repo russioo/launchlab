@@ -130,15 +130,37 @@ export async function processAllTokens(): Promise<void> {
         .update(updates)
         .eq("id", token.id);
 
-      // Record transactions in feed_history
+      // Record transactions in feed_history with correct amounts per type
       for (const tx of result.transactions) {
+        let solAmount = 0;
+        
+        switch (tx.type) {
+          case "claim_fees":
+            solAmount = result.feesClaimed;
+            break;
+          case "buyback":
+            solAmount = result.buybackSol;
+            break;
+          case "add_liquidity":
+            solAmount = result.lpSol;
+            break;
+          case "fee_transfer":
+            // For custom split tokens - calculate the transferred amount
+            solAmount = result.feesClaimed * 0.80; // 80% transferred
+            break;
+          default:
+            solAmount = 0;
+        }
+
         await supabase.from("feed_history").insert({
           token_id: token.id,
           type: tx.type,
           signature: tx.signature,
-          sol_amount: tx.type === "buyback" ? result.buybackSol : result.feesClaimed,
+          sol_amount: solAmount,
           token_amount: 0,
         });
+        
+        console.log(`   📝 Recorded: ${tx.type} = ${solAmount.toFixed(4)} SOL`);
       }
 
     } catch (err: any) {

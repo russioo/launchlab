@@ -78,26 +78,54 @@ tokenRoutes.get("/", async (req: Request, res: Response) => {
  */
 tokenRoutes.get("/stats/global", async (req: Request, res: Response) => {
   try {
-    // Only count tokens that are actually launched (not pending/failed)
-    const { data: tokens, error } = await supabase
+    // Count tokens
+    const { data: tokens, error: tokensError } = await supabase
       .from("tokens")
-      .select("total_fees_claimed, total_buyback, total_lp_added, status")
+      .select("status")
       .neq("status", "pending")
       .neq("status", "failed")
       .not("mint", "is", null);
 
-    if (error) {
+    if (tokensError) {
       return res.status(500).json({ error: "Failed to fetch stats" });
+    }
+
+    // Get actual stats from feed_history (source of truth)
+    const { data: history, error: historyError } = await supabase
+      .from("feed_history")
+      .select("type, sol_amount");
+
+    if (historyError) {
+      console.error("Error fetching feed_history:", historyError);
+    }
+
+    // Calculate totals from feed_history
+    let totalFeesClaimed = 0;
+    let totalBuyback = 0;
+    let totalLpAdded = 0;
+
+    if (history) {
+      for (const h of history) {
+        const amount = Number(h.sol_amount) || 0;
+        if (h.type === "claim_fees") {
+          totalFeesClaimed += amount;
+        } else if (h.type === "buyback") {
+          totalBuyback += amount;
+        } else if (h.type === "add_liquidity") {
+          totalLpAdded += amount;
+        }
+      }
     }
 
     const stats = {
       totalTokens: tokens?.length || 0,
       liveTokens: tokens?.filter((t) => t.status === "live").length || 0,
-      totalFeesClaimed: tokens?.reduce((sum, t) => sum + (Number(t.total_fees_claimed) || 0), 0) || 0,
-      totalBuyback: tokens?.reduce((sum, t) => sum + (Number(t.total_buyback) || 0), 0) || 0,
-      totalLpAdded: tokens?.reduce((sum, t) => sum + (Number(t.total_lp_added) || 0), 0) || 0,
+      totalFeesClaimed,
+      totalBuyback,
+      totalLpAdded,
     };
 
+    console.log("Global stats:", stats);
     res.json(stats);
   } catch (error) {
     console.error("Error fetching stats:", error);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { getRecentActivity, type ActivityItem } from "@/lib/api";
 
 export function ActivityFeed() {

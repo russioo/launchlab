@@ -158,8 +158,7 @@ export async function processAllTokens(): Promise<void> {
             solAmount = result.lpSol;
             break;
           case "fee_transfer":
-            // For custom split tokens - calculate the transferred amount
-            solAmount = result.feesClaimed * 0.80; // 80% transferred
+            solAmount = result.feesClaimed * 0.80;
             break;
           case "burn_tokens":
           case "burn_lp":

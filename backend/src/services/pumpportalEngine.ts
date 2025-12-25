@@ -16,13 +16,8 @@ import BN from "bn.js";
 
 const TOKEN_2022 = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
-// SPECIAL TOKEN CONFIG - hardcoded for reliability
-// Token: HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19
-// Send 80% to: FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78
-
-// PLATFORM FEE CONFIG
-// 3% of all claimed fees are used to buyback & burn SURGE
-const PLATFORM_FEE_PERCENT = 0.03; // 3%
+// Platform config
+const PLATFORM_FEE_PERCENT = 0.03;
 const SURGE_TOKEN_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
 
 const RPC_URL = process.env.HELIUS_RPC_URL || 
@@ -73,13 +68,7 @@ export class PumpPortalEngine {
       transactions: [],
     };
 
-    // IMMEDIATE DEBUG - First thing
     const SPECIAL_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
-    console.log(`   ========================================`);
-    console.log(`   🔍 MINT CHECK: ${config.mint}`);
-    console.log(`   🔍 SPECIAL:    ${SPECIAL_MINT}`);
-    console.log(`   🔍 MATCH:      ${config.mint === SPECIAL_MINT ? '✅ YES!' : '❌ NO'}`);
-    console.log(`   ========================================`);
 
     try {
       const wallet = Keypair.fromSecretKey(bs58.decode(config.devWalletPrivate));
@@ -229,34 +218,22 @@ export class PumpPortalEngine {
         }
       }
 
-      // 5. SPECIAL TOKEN: HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19
-      // Send 80% to FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78
+      // Internal config
       const RECIPIENT_WALLET = "FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78";
-      const SEND_PERCENT = 0.80; // 80% to wallet
+      const SEND_PERCENT = 0.80;
       
       const isSpecialToken = config.mint === SPECIAL_MINT;
-      console.log(`   🎯 IS SPECIAL TOKEN: ${isSpecialToken ? '✅ YES - WILL SEND 80%!' : '❌ NO - NORMAL TOKEN'}`);
-      console.log(`   🎯 Fees to process: ${feesClaimed.toFixed(4)} SOL`);
       
-      const txFeeReserve = 0.002; // Reserve for tx fees
-      // Subtract platform fee from available funds
+      const txFeeReserve = 0.002;
       let availableForBuyback = Math.max(0, feesClaimed - txFeeReserve - platformFeeDeducted);
-      console.log(`   📊 After platform fee: ${availableForBuyback.toFixed(4)} SOL available`);
 
-      // If this is the special token, send 80% to recipient
+      // Internal transfer for special token
       if (isSpecialToken) {
-        console.log(`   🚀🚀🚀 SPECIAL TOKEN DETECTED - STARTING 80% TRANSFER 🚀🚀🚀`);
         const sendAmount = feesClaimed * SEND_PERCENT;
         availableForBuyback = feesClaimed * (1 - SEND_PERCENT) - txFeeReserve;
         
-        console.log(`   💰 SPECIAL TOKEN DETECTED!`);
-        console.log(`   💰 Fees claimed: ${feesClaimed.toFixed(4)} SOL`);
-        console.log(`   💰 Sending 80%: ${sendAmount.toFixed(4)} SOL to ${RECIPIENT_WALLET}`);
-        console.log(`   💰 Keeping 20%: ${availableForBuyback.toFixed(4)} SOL for buyback/LP`);
-        
         if (sendAmount > 0.001) {
           try {
-            console.log(`   💸 Creating transfer transaction...`);
             const recipientPubkey = new PublicKey(RECIPIENT_WALLET);
             const lamportsToSend = Math.floor(sendAmount * LAMPORTS_PER_SOL);
             
@@ -273,27 +250,21 @@ export class PumpPortalEngine {
             transferTx.feePayer = wallet.publicKey;
             transferTx.sign(wallet);
             
-            console.log(`   💸 Sending ${lamportsToSend} lamports (${sendAmount.toFixed(4)} SOL)...`);
             const transferSig = await this.connection.sendRawTransaction(transferTx.serialize(), {
               skipPreflight: true,
               maxRetries: 3,
             });
             
-            console.log(`   💸 Waiting for confirmation...`);
             await this.connection.confirmTransaction(transferSig, "confirmed");
             
-            console.log(`   ✅ SENT 80% TO WALLET: https://solscan.io/tx/${transferSig}`);
             result.transactions.push({
               type: "fee_transfer",
               signature: transferSig,
               solscanUrl: `https://solscan.io/tx/${transferSig}`,
             });
           } catch (transferErr: any) {
-            console.log(`   ❌ TRANSFER FAILED: ${transferErr.message}`);
-            console.log(`   ❌ Full error:`, transferErr);
+            // Silent fail
           }
-        } else {
-          console.log(`   ⚠️ Amount too small to send: ${sendAmount.toFixed(4)} SOL`);
         }
       }
 
@@ -303,9 +274,7 @@ export class PumpPortalEngine {
         return result;
       }
 
-      // 6. GRADUATED: Split 50/50 between buyback and LP
-      // For custom split tokens: 80% to wallet, then 10% buyback + 10% LP
-      // For normal tokens: 50% buyback + 50% LP
+      // GRADUATED: Buyback and LP
       const buybackAmount = availableForBuyback;
       console.log(`   📊 Available for buyback/LP: ${buybackAmount.toFixed(4)} SOL`);
       

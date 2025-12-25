@@ -134,28 +134,40 @@ tokenRoutes.get("/stats/global", async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/tokens/:id - Get single token
+ * GET /api/tokens/:id - Get single token by ID or mint address
  */
 tokenRoutes.get("/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-
-    const { data, error } = await supabase
+    
+    // Check if it's a UUID or mint address
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    let query = supabase
       .from("tokens")
       .select(`
         *,
         feed_history (
           id,
-          fees_claimed,
-          sol_added,
-          tokens_added,
+          type,
+          signature,
+          sol_amount,
+          token_amount,
           created_at
         )
-      `)
-      .eq("id", id)
-      .single();
+      `);
+    
+    if (isUUID) {
+      query = query.eq("id", id);
+    } else {
+      // Assume it's a mint address
+      query = query.eq("mint", id);
+    }
+    
+    const { data, error } = await query.single();
 
     if (error || !data) {
+      console.log(`Token not found: ${id} (isUUID: ${isUUID})`);
       return res.status(404).json({ error: "Token not found" });
     }
 

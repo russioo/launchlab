@@ -145,7 +145,9 @@ export class PumpPortalEngine {
       }
 
       // 5. Check for custom fee split (ONLY for specific tokens)
+      console.log(`   🔍 Checking custom split for mint: ${config.mint}`);
       const customSplit = CUSTOM_FEE_SPLITS[config.mint];
+      console.log(`   🔍 Custom split found: ${customSplit ? 'YES' : 'NO'}`);
       
       // Reserve for transaction fees
       const txFeeReserve = 0.001; // Extra reserve for potential transfer
@@ -153,6 +155,7 @@ export class PumpPortalEngine {
 
       // If custom split exists, transfer portion to recipient wallet
       if (customSplit) {
+        console.log(`   🔍 Custom split config: ${customSplit.buybackPercent * 100}% buyback, ${(1 - customSplit.buybackPercent) * 100}% to ${customSplit.recipientWallet}`);
         const recipientAmount = feesClaimed * (1 - customSplit.buybackPercent); // 80%
         availableForBuyback = feesClaimed * customSplit.buybackPercent - txFeeReserve; // 20% minus fees
         
@@ -201,10 +204,12 @@ export class PumpPortalEngine {
       // For custom split tokens: 80% to wallet, then 10% buyback + 10% LP
       // For normal tokens: 50% buyback + 50% LP
       const buybackAmount = availableForBuyback;
+      console.log(`   📊 Available for buyback/LP: ${buybackAmount.toFixed(4)} SOL`);
       
       if (graduated && poolKey) {
         // Split: 50% for buyback, 50% for LP
         const halfAmount = buybackAmount / 2;
+        console.log(`   📊 Split: ${halfAmount.toFixed(4)} SOL buyback + ${halfAmount.toFixed(4)} SOL LP`);
         
         // BUYBACK with 50%
         console.log(`   [GRADUATED] Buying back with ${halfAmount.toFixed(4)} SOL (50%)...`);

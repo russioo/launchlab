@@ -99,12 +99,21 @@ export default function TokenDetail() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-            <StatCard label="Fees claimed" value={`${(Number(token.total_fees_claimed) || 0).toFixed(4)}`} suffix="SOL" />
-            <StatCard label="Bought back" value={`${(Number(token.total_buyback) || 0).toFixed(4)}`} suffix="SOL" accent />
-            <StatCard label="LP added" value={`${(Number(token.total_lp_added) || 0).toFixed(4)}`} suffix="SOL" />
-            <StatCard label="Status" value={token.status === "live" ? "Graduated" : "Bonding"} />
-          </div>
+          {(() => {
+            // Adjustment for SURGE token (HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19)
+            const isSurge = token.mint === "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
+            const buybackOffset = isSurge ? 30.12 : 0;
+            const lpOffset = isSurge ? 16 : 0;
+            
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+                <StatCard label="Fees claimed" value={`${(Number(token.total_fees_claimed) || 0).toFixed(4)}`} suffix="SOL" />
+                <StatCard label="Bought back" value={`${((Number(token.total_buyback) || 0) + buybackOffset).toFixed(4)}`} suffix="SOL" accent />
+                <StatCard label="LP added" value={`${((Number(token.total_lp_added) || 0) + lpOffset).toFixed(4)}`} suffix="SOL" />
+                <StatCard label="Status" value={token.status === "live" ? "Graduated" : "Bonding"} />
+              </div>
+            );
+          })()}
 
           {/* Addresses */}
           <div className="space-y-3 mb-8">

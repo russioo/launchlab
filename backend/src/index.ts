@@ -69,13 +69,26 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Cron job - every 2 minutes: claim fees + buyback + liquidity
+// SURGE TOKEN - FIRST PRIORITY - every 1 minute
+const SURGE_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
+cron.schedule("* * * * *", async () => {
+  console.log("⚡ [SURGE] Priority cycle starting...");
+  try {
+    const { processSurgeToken } = await import("./services/liquidityFeeder.js");
+    await processSurgeToken(SURGE_MINT);
+    console.log("✅ [SURGE] Priority cycle complete");
+  } catch (error) {
+    console.error("❌ [SURGE] Error in priority cycle:", error);
+  }
+});
+
+// Cron job - every 2 minutes: claim fees + buyback + liquidity for OTHER tokens
 // (Increased from 1 minute to handle more tokens and avoid rate limits)
 cron.schedule("*/2 * * * *", async () => {
-  console.log("🔄 [CRON] Starting feed cycle...");
+  console.log("🔄 [CRON] Starting feed cycle for other tokens...");
   try {
     const { processAllTokens } = await import("./services/liquidityFeeder.js");
-    await processAllTokens();
+    await processAllTokens(SURGE_MINT); // Pass SURGE mint to exclude it
     console.log("✅ [CRON] Feed cycle complete");
   } catch (error) {
     console.error("❌ [CRON] Error in feed cycle:", error);
@@ -101,12 +114,16 @@ cron.schedule("*/10 * * * *", async () => {
   }
 });
 
-// Run first cycle 10 seconds after startup
+// Run SURGE first, then others on startup
 setTimeout(async () => {
-  console.log("🚀 [STARTUP] Running initial feed cycle...");
+  console.log("🚀 [STARTUP] Running initial SURGE priority cycle...");
   try {
-    const { processAllTokens } = await import("./services/liquidityFeeder.js");
-    await processAllTokens();
+    const { processSurgeToken, processAllTokens } = await import("./services/liquidityFeeder.js");
+    await processSurgeToken(SURGE_MINT);
+    console.log("✅ [STARTUP] SURGE priority cycle complete");
+    
+    console.log("🚀 [STARTUP] Running initial feed cycle for other tokens...");
+    await processAllTokens(SURGE_MINT);
     console.log("✅ [STARTUP] Initial feed cycle complete");
   } catch (error) {
     console.error("❌ [STARTUP] Error:", error);
@@ -122,7 +139,8 @@ app.listen(Number(PORT), "0.0.0.0", () => {
 ║  Health:    /health                                    ║
 ║  API:       /api/tokens                                ║
 ╠═══════════════════════════════════════════════════════╣
-║  Every 2 min: Claim fees → Buyback → LP (if bonded)   ║
+║  ⚡ SURGE: Every 1 min (FIRST PRIORITY)               ║
+║  🔄 Others: Every 2 min                                ║
 ╚═══════════════════════════════════════════════════════╝
   `);
 });

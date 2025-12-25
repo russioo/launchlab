@@ -8,6 +8,7 @@ import { WalletButton } from "./WalletButton";
 const navigation = [
   { name: "Overview", href: "/" },
   { name: "Launch", href: "/launch" },
+  { name: "Roadmap", href: "/roadmap" },
   { name: "Learn", href: "/docs" },
 ];
 

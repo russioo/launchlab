@@ -207,50 +207,76 @@ export class PumpPortalEngine {
       console.log(`   📊 Available for buyback/LP: ${buybackAmount.toFixed(4)} SOL`);
       
       if (graduated && poolKey) {
-        // Split: 50% for buyback, 50% for LP
-        const halfAmount = buybackAmount / 2;
-        console.log(`   📊 Split: ${halfAmount.toFixed(4)} SOL buyback + ${halfAmount.toFixed(4)} SOL LP`);
+        const mintPubkey = new PublicKey(config.mint);
+        const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
         
-        // BUYBACK with 50%
-        console.log(`   [GRADUATED] Buying back with ${halfAmount.toFixed(4)} SOL (50%)...`);
-        const buyResult = await this.buyToken(wallet, config.mint, halfAmount, true);
+        // Get token balance BEFORE buyback
+        let tokensBefore = BigInt(0);
+        try {
+          const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+          tokensBefore = acc.amount;
+        } catch {
+          // No tokens yet
+        }
+        console.log(`   📊 Tokens before buyback: ${Number(tokensBefore) / 1e6}`);
+        
+        // BUYBACK with 100% of available SOL
+        console.log(`   [GRADUATED] Buying back with ${buybackAmount.toFixed(4)} SOL (100%)...`);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, true);
         if (buyResult.success && buyResult.signature) {
-          result.buybackSol = halfAmount;
+          result.buybackSol = buybackAmount;
           result.transactions.push({
             type: "buyback",
             signature: buyResult.signature,
             solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
           });
           console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+          
+          // Wait for tokens to arrive
+          await new Promise(r => setTimeout(r, 3000));
+          
+          // Get token balance AFTER buyback
+          let tokensAfter = BigInt(0);
+          try {
+            const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+            tokensAfter = acc.amount;
+          } catch {
+            // No tokens
+          }
+          
+          const tokensBought = tokensAfter - tokensBefore;
+          console.log(`   📊 Tokens after buyback: ${Number(tokensAfter) / 1e6}`);
+          console.log(`   📊 Tokens bought: ${Number(tokensBought) / 1e6}`);
+          
+          // Only add 50% of BOUGHT tokens to LP
+          if (tokensBought > BigInt(0)) {
+            const tokensForLp = tokensBought / BigInt(2);
+            console.log(`   📊 Adding 50% of bought tokens to LP: ${Number(tokensForLp) / 1e6}`);
+            
+            const lpResult = await this.addLiquidityWithTokens(wallet, config.mint, poolKey, tokensForLp);
+            if (lpResult.success && lpResult.signature) {
+              result.lpSol = lpResult.solUsed;
+              result.lpTokens = lpResult.lpTokens;
+              result.transactions.push({
+                type: "add_liquidity",
+                signature: lpResult.signature,
+                solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
+              });
+              
+              if (lpResult.burned && lpResult.burnSignature) {
+                result.transactions.push({
+                  type: "burn_lp",
+                  signature: lpResult.burnSignature,
+                  solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
+                });
+              }
+              console.log(`   📊 Remaining tokens in wallet: ${Number(tokensAfter - tokensForLp) / 1e6}`);
+            } else if (lpResult.error) {
+              console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
+            }
+          }
         } else {
           console.log(`   ❌ Buyback failed: ${buyResult.error}`);
-        }
-
-        // LP with 50%
-        if (halfAmount >= minFeesForBuyback) {
-          await new Promise(r => setTimeout(r, 2000));
-
-          console.log(`   [GRADUATED] Adding ${halfAmount.toFixed(4)} SOL to LP (50%) + BURN...`);
-          const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, halfAmount);
-          if (lpResult.success && lpResult.signature) {
-            result.lpSol = halfAmount;
-            result.lpTokens = lpResult.lpTokens;
-            result.transactions.push({
-              type: "add_liquidity",
-              signature: lpResult.signature,
-              solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
-            });
-            
-            if (lpResult.burned && lpResult.burnSignature) {
-              result.transactions.push({
-                type: "burn_lp",
-                signature: lpResult.burnSignature,
-                solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
-              });
-            }
-          } else if (lpResult.error) {
-            console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
-          }
         }
         
       } else if (graduated && !poolKey) {

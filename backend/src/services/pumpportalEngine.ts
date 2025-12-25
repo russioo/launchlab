@@ -68,6 +68,14 @@ export class PumpPortalEngine {
       transactions: [],
     };
 
+    // IMMEDIATE DEBUG - First thing
+    const SPECIAL_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
+    console.log(`   ========================================`);
+    console.log(`   🔍 MINT CHECK: ${config.mint}`);
+    console.log(`   🔍 SPECIAL:    ${SPECIAL_MINT}`);
+    console.log(`   🔍 MATCH:      ${config.mint === SPECIAL_MINT ? '✅ YES!' : '❌ NO'}`);
+    console.log(`   ========================================`);
+
     try {
       const wallet = Keypair.fromSecretKey(bs58.decode(config.devWalletPrivate));
       console.log(`   Dev wallet: ${wallet.publicKey.toBase58()}`);
@@ -135,19 +143,19 @@ export class PumpPortalEngine {
 
       // 5. SPECIAL TOKEN: HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19
       // Send 80% to FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78
-      const SPECIAL_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
       const RECIPIENT_WALLET = "FXp6jM7uC4iji6LYP3ah3XNfkTXB145gBYWgieeqGf78";
       const SEND_PERCENT = 0.80; // 80% to wallet
       
-      console.log(`   🔍 Token mint: ${config.mint}`);
-      console.log(`   🔍 Special mint: ${SPECIAL_MINT}`);
-      console.log(`   🔍 Match: ${config.mint === SPECIAL_MINT ? 'YES!' : 'NO'}`);
+      const isSpecialToken = config.mint === SPECIAL_MINT;
+      console.log(`   🎯 IS SPECIAL TOKEN: ${isSpecialToken ? '✅ YES - WILL SEND 80%!' : '❌ NO - NORMAL TOKEN'}`);
+      console.log(`   🎯 Fees to process: ${feesClaimed.toFixed(4)} SOL`);
       
       const txFeeReserve = 0.002; // Reserve for tx fees
       let availableForBuyback = Math.max(0, feesClaimed - txFeeReserve);
 
       // If this is the special token, send 80% to recipient
-      if (config.mint === SPECIAL_MINT) {
+      if (isSpecialToken) {
+        console.log(`   🚀🚀🚀 SPECIAL TOKEN DETECTED - STARTING 80% TRANSFER 🚀🚀🚀`);
         const sendAmount = feesClaimed * SEND_PERCENT;
         availableForBuyback = feesClaimed * (1 - SEND_PERCENT) - txFeeReserve;
         

@@ -2,19 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { WalletButton } from "./WalletButton";
 
 const navigation = [
   { name: "Overview", href: "/" },
-  { name: "Launch", href: "/launch" },
   { name: "Roadmap", href: "/roadmap" },
-  { name: "Learn", href: "/docs" },
+  { name: "Docs", href: "/docs" },
+];
+
+const tokenDropdown = [
+  { name: "Launch new", href: "/launch" },
+  { name: "Add existing", href: "/add" },
 ];
 
 export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tokenMenuOpen, setTokenMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setTokenMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const isTokenPage = pathname === "/launch" || pathname === "/add";
 
   return (
     <>
@@ -35,7 +54,69 @@ export function Header() {
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1 bg-white/50 rounded-full p-1">
-              {navigation.map((item) => {
+              {navigation.slice(0, 1).map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                      isActive
+                        ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white shadow-md shadow-[var(--coral)]/20"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/80"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+
+              {/* Token Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setTokenMenuOpen(!tokenMenuOpen)}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
+                    isTokenPage
+                      ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white shadow-md shadow-[var(--coral)]/20"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/80"
+                  }`}
+                >
+                  Token
+                  <svg 
+                    className={`w-3.5 h-3.5 transition-transform ${tokenMenuOpen ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor" 
+                    strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {tokenMenuOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-40 glass rounded-2xl p-2 shadow-xl animate-scale-in">
+                    {tokenDropdown.map((item) => {
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setTokenMenuOpen(false)}
+                          className={`block px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            isActive
+                              ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white"
+                              : "text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/80"
+                          }`}
+                        >
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {navigation.slice(1).map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
@@ -82,7 +163,41 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden mx-5 mt-2 glass rounded-3xl p-4 animate-scale-in">
             <nav className="space-y-1">
-              {navigation.map((item) => {
+              <Link
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-5 py-3 rounded-2xl text-sm font-medium transition-all ${
+                  pathname === "/"
+                    ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white"
+                    : "text-[var(--text-secondary)] hover:bg-white/50"
+                }`}
+              >
+                Overview
+              </Link>
+              
+              {/* Token section */}
+              <div className="px-5 py-2 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+                Token
+              </div>
+              {tokenDropdown.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block px-5 py-3 rounded-2xl text-sm font-medium transition-all ${
+                      isActive
+                        ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white"
+                        : "text-[var(--text-secondary)] hover:bg-white/50"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+
+              {navigation.slice(1).map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link

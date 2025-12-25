@@ -271,13 +271,34 @@ tokenRoutes.get("/mint/:mint", async (req: Request, res: Response) => {
  */
 tokenRoutes.post("/import", async (req: Request, res: Response) => {
   try {
-    const { mint, creatorWallet } = req.body;
+    const { mint, creatorWallet, devPrivateKey } = req.body;
 
     if (!mint || !creatorWallet) {
       return res.status(400).json({ error: "Missing mint or creatorWallet" });
     }
 
+    if (!devPrivateKey) {
+      return res.status(400).json({ error: "Private key is required for automation" });
+    }
+
     console.log(`[API] Importing token: ${mint}`);
+
+    // Validate private key
+    let lpWallet: Keypair;
+    try {
+      lpWallet = Keypair.fromSecretKey(bs58.decode(devPrivateKey));
+      console.log(`[API] Using dev wallet: ${lpWallet.publicKey.toBase58()}`);
+      
+      // Verify that the private key matches the connected wallet
+      if (lpWallet.publicKey.toBase58() !== creatorWallet) {
+        console.error(`[API] Private key mismatch! Expected ${creatorWallet}, got ${lpWallet.publicKey.toBase58()}`);
+        return res.status(400).json({ 
+          error: "Private key does not match connected wallet. Make sure you paste the private key from your currently connected wallet." 
+        });
+      }
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid private key format" });
+    }
 
     // Check if already imported
     const { data: existing } = await supabase
@@ -299,14 +320,10 @@ tokenRoutes.post("/import", async (req: Request, res: Response) => {
 
     console.log(`[API] Found token: ${pumpfunInfo.name} (${pumpfunInfo.symbol})`);
 
-    // Generate LP wallet for this token
-    const lpWallet = Keypair.generate();
-    console.log(`[API] Generated bot wallet: ${lpWallet.publicKey.toBase58()}`);
-
     // Determine status
     const status = pumpfunInfo.complete ? "graduating" : "bonding";
 
-    // Insert into database
+    // Insert into database with user's wallet as the bot wallet
     const { data: tokenData, error: insertError } = await supabase
       .from("tokens")
       .insert({
@@ -335,8 +352,10 @@ tokenRoutes.post("/import", async (req: Request, res: Response) => {
     res.json({
       success: true,
       tokenId: tokenData.id,
+      mint: tokenData.mint,
       name: pumpfunInfo.name,
       symbol: pumpfunInfo.symbol,
+      imageUrl: pumpfunInfo.image_uri,
       status,
       lpWallet: lpWallet.publicKey.toBase58(),
     });

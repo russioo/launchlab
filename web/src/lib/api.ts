@@ -128,7 +128,17 @@ export async function createToken(data: {
 export async function importToken(data: {
   mint: string;
   creatorWallet: string;
-}): Promise<{ success: boolean; tokenId: string; name: string; symbol: string }> {
+  devPrivateKey: string;
+}): Promise<{ 
+  success: boolean; 
+  tokenId: string; 
+  mint: string;
+  name: string; 
+  symbol: string;
+  imageUrl: string | null;
+  status: string;
+  lpWallet: string;
+}> {
   const response = await fetch(`${API_URL}/api/tokens/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

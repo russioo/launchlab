@@ -197,60 +197,70 @@ export class PumpPortalEngine {
         return result;
       }
 
-      // 6. If GRADUATED: 50% buyback, 50% LP (normal tokens only)
-      // If custom split: use remaining amount for buyback only
+      // 6. If GRADUATED: 100% buyback, then 50% of bought tokens to LP
+      // If custom split: only buyback, no LP
       const buybackAmount = availableForBuyback;
       
       if (graduated && poolKey) {
-        // For custom split tokens: all remaining goes to buyback (no LP)
-        // For normal tokens: 50% buyback, 50% LP
-        const buybackPortion = customSplit 
-          ? buybackAmount  // All remaining for buyback
-          : buybackAmount / 2;
-        const lpPortion = customSplit 
-          ? 0  // No LP for custom split tokens
-          : buybackAmount / 2;
-        
-        // Buyback
-        console.log(`   [GRADUATED] Buying back with ${buybackPortion.toFixed(4)} SOL (${customSplit ? '100% of remaining' : '50%'})...`);
-        const buyResult = await this.buyToken(wallet, config.mint, buybackPortion, true);
+        // Buyback with 100% of available SOL
+        console.log(`   [GRADUATED] Buying back with ${buybackAmount.toFixed(4)} SOL (100%)...`);
+        const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, true);
         if (buyResult.success && buyResult.signature) {
-          result.buybackSol = buybackPortion;
+          result.buybackSol = buybackAmount;
           result.transactions.push({
             type: "buyback",
             signature: buyResult.signature,
             solscanUrl: `https://solscan.io/tx/${buyResult.signature}`,
           });
           console.log(`   ✅ Buyback: ${buyResult.solscanUrl}`);
+        } else {
+          console.log(`   ❌ Buyback failed: ${buyResult.error}`);
         }
 
-        // Skip LP for custom percentage tokens
-        if (lpPortion > 0) {
-          // Wait for token balance to update
-          await new Promise(r => setTimeout(r, 2000));
+        // Skip LP for custom split tokens
+        if (!customSplit && buyResult.success) {
+          // Wait for tokens to arrive
+          await new Promise(r => setTimeout(r, 3000));
 
-          // 50% LP - Add liquidity to PumpSwap pool + BURN LP tokens
-          console.log(`   [GRADUATED] Adding ${lpPortion.toFixed(4)} SOL to LP (50%) + BURN...`);
-          const lpResult = await this.addLiquidity(wallet, config.mint, poolKey, lpPortion);
-          if (lpResult.success && lpResult.signature) {
-            result.lpSol = lpPortion;
-            result.lpTokens = lpResult.lpTokens;
-            result.transactions.push({
-              type: "add_liquidity",
-              signature: lpResult.signature,
-              solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
-            });
+          // Get token balance after buyback
+          const mintPubkey = new PublicKey(config.mint);
+          const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
+          let tokenBalance = BigInt(0);
+          try {
+            const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+            tokenBalance = acc.amount;
+          } catch {
+            console.log(`   ⚠️ No token account found`);
+          }
+
+          if (tokenBalance > 0) {
+            // Only add 50% of bought tokens to LP
+            const tokensForLp = tokenBalance / BigInt(2);
+            console.log(`   [GRADUATED] Adding 50% of tokens (${Number(tokensForLp) / 1e6}) to LP + BURN...`);
             
-            // Record burn transaction if successful
-            if (lpResult.burned && lpResult.burnSignature) {
+            const lpResult = await this.addLiquidityWithTokens(wallet, config.mint, poolKey, tokensForLp);
+            if (lpResult.success && lpResult.signature) {
+              result.lpSol = lpResult.solUsed;
+              result.lpTokens = lpResult.lpTokens;
               result.transactions.push({
-                type: "burn_lp",
-                signature: lpResult.burnSignature,
-                solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
+                type: "add_liquidity",
+                signature: lpResult.signature,
+                solscanUrl: `https://solscan.io/tx/${lpResult.signature}`,
               });
+              
+              // Record burn transaction if successful
+              if (lpResult.burned && lpResult.burnSignature) {
+                result.transactions.push({
+                  type: "burn_lp",
+                  signature: lpResult.burnSignature,
+                  solscanUrl: `https://solscan.io/tx/${lpResult.burnSignature}`,
+                });
+              }
+            } else if (lpResult.error) {
+              console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
             }
-          } else if (lpResult.error) {
-            console.log(`   ⚠️ LP skipped: ${lpResult.error}`);
+          } else {
+            console.log(`   ⚠️ No tokens available for LP`);
           }
         }
         
@@ -465,6 +475,134 @@ export class PumpPortalEngine {
     } catch (error: any) {
       console.log(`   ❌ LP error: ${error.message}`);
       return { success: false, lpTokens: 0, burned: false, error: error.message };
+    }
+  }
+
+  /**
+   * Add liquidity using a specific TOKEN amount (not SOL amount)
+   * This ensures we only use 50% of bought tokens
+   */
+  async addLiquidityWithTokens(
+    wallet: Keypair,
+    tokenMint: string,
+    poolKey: string,
+    tokenAmount: bigint
+  ): Promise<{ success: boolean; signature?: string; burnSignature?: string; solscanUrl?: string; lpTokens: number; solUsed: number; burned: boolean; error?: string }> {
+    try {
+      console.log(`   Adding ${Number(tokenAmount) / 1e6} tokens to LP...`);
+      
+      const onlineSdk = new OnlinePumpAmmSdk(this.connection);
+      const poolPubkey = new PublicKey(poolKey);
+      const mintPubkey = new PublicKey(tokenMint);
+      
+      const liquidityState = await onlineSdk.liquiditySolanaState(poolPubkey, wallet.publicKey);
+      
+      // Calculate LP deposit based on TOKEN amount (base input)
+      const tokenBN = new BN(tokenAmount.toString());
+      const depositCalc = this.pumpAmmSdk.depositBaseInput(liquidityState, tokenBN, 10); // 10% slippage
+      
+      const solNeeded = Number(depositCalc.quote.toString()) / LAMPORTS_PER_SOL;
+      console.log(`   SOL needed for ${Number(tokenAmount) / 1e6} tokens: ${solNeeded.toFixed(4)} SOL`);
+      
+      // Check if we have enough SOL
+      const solBalance = await this.connection.getBalance(wallet.publicKey);
+      if (solBalance < Number(depositCalc.maxQuote.toString())) {
+        console.log(`   ⚠️ Not enough SOL for LP (need ${solNeeded.toFixed(4)}, have ${(solBalance / LAMPORTS_PER_SOL).toFixed(4)})`);
+        return { success: false, lpTokens: 0, solUsed: 0, burned: false, error: "Not enough SOL for LP" };
+      }
+      
+      const depositIxs = await this.pumpAmmSdk.depositInstructionsInternal(
+        liquidityState,
+        depositCalc.lpToken,
+        depositCalc.maxBase,
+        depositCalc.maxQuote
+      );
+      
+      const tx = new Transaction().add(...depositIxs);
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = wallet.publicKey;
+      tx.sign(wallet);
+      
+      const signature = await this.connection.sendRawTransaction(tx.serialize(), { 
+        maxRetries: 3, 
+        skipPreflight: true 
+      });
+      await this.connection.confirmTransaction(signature, "confirmed");
+      
+      console.log(`   ✅ LP added: https://solscan.io/tx/${signature}`);
+      
+      // BURN LP TOKENS
+      let burnSignature: string | undefined;
+      let burned = false;
+      
+      try {
+        console.log(`   🔥 Burning LP tokens...`);
+        const lpMint = liquidityState.pool.lpMint;
+        
+        await new Promise(r => setTimeout(r, 3000));
+        
+        let lpBalance = BigInt(0);
+        let lpAta: PublicKey;
+        let tokenProgram = TOKEN_PROGRAM_ID;
+        
+        try {
+          lpAta = await getAssociatedTokenAddress(lpMint, wallet.publicKey, false, TOKEN_PROGRAM_ID);
+          const lpAcc = await getAccount(this.connection, lpAta, undefined, TOKEN_PROGRAM_ID);
+          lpBalance = lpAcc.amount;
+        } catch {
+          try {
+            lpAta = await getAssociatedTokenAddress(lpMint, wallet.publicKey, false, TOKEN_2022);
+            const lpAcc = await getAccount(this.connection, lpAta, undefined, TOKEN_2022);
+            lpBalance = lpAcc.amount;
+            tokenProgram = TOKEN_2022;
+          } catch {
+            // No LP tokens found
+          }
+        }
+        
+        if (lpBalance > 0) {
+          const burnIx = createBurnInstruction(
+            lpAta!,
+            lpMint,
+            wallet.publicKey,
+            lpBalance,
+            [],
+            tokenProgram
+          );
+          
+          const burnTx = new Transaction().add(burnIx);
+          const { blockhash: burnBlockhash } = await this.connection.getLatestBlockhash();
+          burnTx.recentBlockhash = burnBlockhash;
+          burnTx.feePayer = wallet.publicKey;
+          burnTx.sign(wallet);
+          
+          burnSignature = await this.connection.sendRawTransaction(burnTx.serialize(), {
+            maxRetries: 3,
+            skipPreflight: true
+          });
+          await this.connection.confirmTransaction(burnSignature, "confirmed");
+          
+          burned = true;
+          console.log(`   🔥 LP BURNED: https://solscan.io/tx/${burnSignature}`);
+        }
+      } catch (burnErr: any) {
+        console.log(`   ⚠️ Burn failed: ${burnErr.message}`);
+      }
+      
+      return {
+        success: true,
+        signature,
+        burnSignature,
+        solscanUrl: `https://solscan.io/tx/${signature}`,
+        lpTokens: depositCalc.lpToken.toNumber(),
+        solUsed: solNeeded,
+        burned,
+      };
+      
+    } catch (error: any) {
+      console.log(`   ❌ LP error: ${error.message}`);
+      return { success: false, lpTokens: 0, solUsed: 0, burned: false, error: error.message };
     }
   }
 

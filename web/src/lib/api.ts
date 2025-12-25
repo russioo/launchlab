@@ -31,9 +31,11 @@ export interface GlobalStats {
 
 export interface FeedHistory {
   id: string;
-  fees_claimed: number;
-  sol_added: number;
-  tokens_added: number;
+  type: string;
+  signature: string;
+  sol_amount: number;
+  token_amount: number;
+  lp_tokens: number;
   created_at: string;
 }
 

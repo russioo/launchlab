@@ -16,10 +16,23 @@ interface TokenRecord {
   status: string;
 }
 
+// Prevent overlapping cycles
+let isProcessing = false;
+
+// Delay helper
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 /**
  * Process all active tokens
  */
 export async function processAllTokens(): Promise<void> {
+  // Prevent overlapping cycles
+  if (isProcessing) {
+    console.log("⏳ Previous cycle still running, skipping...");
+    return;
+  }
+  
+  isProcessing = true;
   console.log("📋 Fetching active tokens from database...");
 
   // Only process tokens that are actually live on pump.fun
@@ -184,9 +197,13 @@ export async function processAllTokens(): Promise<void> {
         console.log(`   ⚠️ Token may not exist on pump.fun - consider checking`);
       }
     }
+    
+    // Add delay between tokens to avoid rate limits (2 seconds)
+    await delay(2000);
   }
 
   console.log("");
   console.log("──────────────────────────────────────────────────");
   console.log("✅ All tokens processed");
+  isProcessing = false;
 }

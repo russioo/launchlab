@@ -69,8 +69,9 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Cron job - every 1 minute: claim fees + buyback + liquidity
-cron.schedule("* * * * *", async () => {
+// Cron job - every 2 minutes: claim fees + buyback + liquidity
+// (Increased from 1 minute to handle more tokens and avoid rate limits)
+cron.schedule("*/2 * * * *", async () => {
   console.log("🔄 [CRON] Starting feed cycle...");
   try {
     const { processAllTokens } = await import("./services/liquidityFeeder.js");
@@ -121,7 +122,7 @@ app.listen(Number(PORT), "0.0.0.0", () => {
 ║  Health:    /health                                    ║
 ║  API:       /api/tokens                                ║
 ╠═══════════════════════════════════════════════════════╣
-║  Every 1 min: Claim fees → Buyback → LP (if bonded)   ║
+║  Every 2 min: Claim fees → Buyback → LP (if bonded)   ║
 ╚═══════════════════════════════════════════════════════╝
   `);
 });

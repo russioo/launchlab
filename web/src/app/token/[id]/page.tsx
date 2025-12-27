@@ -4,58 +4,69 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { getToken, type Token, type FeedHistory } from "@/lib/api";
+import { getToken, getTokenHistory, type Token, type FeedHistory } from "@/lib/api";
 
-export default function TokenDetail() {
+export default function TokenDetailPage() {
   const params = useParams();
   const tokenId = params.id as string;
-  
-  const [token, setToken] = useState<(Token & { feed_history: FeedHistory[] }) | null>(null);
+
+  const [token, setToken] = useState<Token | null>(null);
+  const [history, setHistory] = useState<FeedHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
 
   useEffect(() => {
-    const fetchToken = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getToken(tokenId);
-        setToken(data);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to fetch token");
+        const [tokenData, historyData] = await Promise.all([
+          getToken(tokenId),
+          getTokenHistory(tokenId),
+        ]);
+        setToken(tokenData);
+        setHistory(historyData);
+      } catch (error) {
+        console.error("Failed to fetch token:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (tokenId) {
-      fetchToken();
-      const interval = setInterval(fetchToken, 30000);
-      return () => clearInterval(interval);
-    }
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, [tokenId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen relative">
+        <div className="grid-bg" />
         <Header />
-        <main className="pt-16 max-w-4xl mx-auto px-5 py-16">
-          <div className="flex items-center justify-center h-64">
-            <div className="w-8 h-8 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
+        <main className="relative z-10 pt-24 pb-20">
+          <div className="max-w-4xl mx-auto px-6 flex items-center justify-center py-20">
+            <div className="loader" />
           </div>
         </main>
       </div>
     );
   }
 
-  if (error || !token) {
+  if (!token) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen relative">
+        <div className="grid-bg" />
         <Header />
-        <main className="pt-16 max-w-4xl mx-auto px-5 py-16">
-          <div className="text-center py-16">
-            <h1 className="text-xl font-display mb-4">Token not found</h1>
-            <Link href="/" className="text-[var(--accent)] hover:underline">
-              Back to overview
-            </Link>
+        <main className="relative z-10 pt-24 pb-20">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="card text-center py-16">
+              <div className="text-4xl mb-4">🔍</div>
+              <h2 className="text-2xl font-bold mb-2">Token not found</h2>
+              <p className="text-[var(--text-secondary)] mb-6">
+                This token doesn't exist or has been removed.
+              </p>
+              <Link href="/tokens" className="btn btn-primary">
+                Browse Tokens
+              </Link>
+            </div>
           </div>
         </main>
       </div>
@@ -63,209 +74,224 @@ export default function TokenDetail() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
+      {/* Background */}
+      <div className="grid-bg" />
+      <div className="glow-orb glow-orb-1" />
+
       <Header />
-      
-      <main className="pt-16">
-        <section className="max-w-4xl mx-auto px-5 py-8">
+
+      <main className="relative z-10 pt-24 pb-20">
+        <div className="max-w-4xl mx-auto px-6">
+          {/* Back link */}
           <Link 
-            href="/" 
-            className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-8"
+            href="/tokens" 
+            className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-6 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
             </svg>
-            Back
+            Back to tokens
           </Link>
 
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start gap-5 mb-8">
-            <TokenImage imageUrl={token.image_url} mint={token.mint} symbol={token.symbol} />
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-3 mb-1">
-                <h1 className="text-3xl font-display">{token.name}</h1>
-                <StatusBadge status={token.status} />
+          {/* Token Header */}
+          <div className="card mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <TokenImage token={token} size="large" />
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-2xl font-bold">{token.name}</h1>
+                  <StatusBadge status={token.status} />
+                </div>
+                <div className="text-[var(--text-muted)] mb-4">${token.symbol}</div>
+                {token.mint && (
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs font-mono bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-lg text-[var(--text-secondary)]">
+                      {token.mint.slice(0, 8)}...{token.mint.slice(-8)}
+                    </code>
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(token.mint)}
+                      className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                      title="Copy address"
+                    >
+                      <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <a
+                      href={`https://solscan.io/token/${token.mint}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                      title="View on Solscan"
+                    >
+                      <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
               </div>
-              <div className="text-[var(--text-muted)] font-mono mb-3">${token.symbol}</div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="stat-card">
+              <div className="stat-value">{Number(token.total_fees_claimed || 0).toFixed(2)}</div>
+              <div className="stat-label">Fees Claimed (SOL)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{Number(token.total_buyback || 0).toFixed(2)}</div>
+              <div className="stat-label">Bought Back (SOL)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{Number(token.total_burned || 0).toFixed(0)}</div>
+              <div className="stat-label">Tokens Burned</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{Number(token.total_lp_added || 0).toFixed(2)}</div>
+              <div className="stat-label">LP Added (SOL)</div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6 p-1 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border)] inline-flex">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                activeTab === "overview"
+                  ? "bg-[var(--accent)] text-[var(--bg-primary)]"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                activeTab === "history"
+                  ? "bg-[var(--accent)] text-[var(--bg-primary)]"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              History
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === "overview" && (
+            <div className="card animate-fade-in">
+              <h3 className="text-lg font-semibold mb-4">Active Features</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <FeatureCard icon="🔥" name="Buyback & Burn" active={true} />
+                <FeatureCard icon="💧" name="Auto-Liquidity" active={true} />
+                <FeatureCard icon="🎰" name="Jackpot" active={false} />
+                <FeatureCard icon="📈" name="Revenue Share" active={false} />
+              </div>
+
               {token.description && (
-                <p className="text-[var(--text-secondary)]">{token.description}</p>
+                <div className="mt-6 pt-6 border-t border-[var(--border)]">
+                  <h3 className="text-lg font-semibold mb-3">Description</h3>
+                  <p className="text-[var(--text-secondary)]">{token.description}</p>
+                </div>
               )}
             </div>
-            
-            <div className="flex flex-wrap gap-2">
-              <ExtLink href={`https://pump.fun/${token.mint}`}>pump.fun</ExtLink>
-              <ExtLink href={`https://solscan.io/token/${token.mint}`}>Solscan</ExtLink>
-            </div>
-          </div>
-
-          {/* Stats */}
-          {(() => {
-            // Adjustment for SURGE token (HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19)
-            const isSurge = token.mint === "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
-            const buybackOffset = isSurge ? 30.12 : 0;
-            const lpOffset = isSurge ? 16 : 0;
-            
-            return (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-                <StatCard label="Fees claimed" value={`${(Number(token.total_fees_claimed) || 0).toFixed(4)}`} suffix="SOL" />
-                <StatCard label="Bought back" value={`${((Number(token.total_buyback) || 0) + buybackOffset).toFixed(4)}`} suffix="SOL" accent />
-                <StatCard label="LP added" value={`${((Number(token.total_lp_added) || 0) + lpOffset).toFixed(4)}`} suffix="SOL" />
-                <StatCard label="Status" value={token.status === "live" ? "Graduated" : "Bonding"} />
-              </div>
-            );
-          })()}
-
-          {/* Addresses */}
-          <div className="space-y-3 mb-8">
-            <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] card-shadow">
-              <div className="text-xs text-[var(--text-muted)] mb-1">Mint</div>
-              <div className="font-mono text-sm break-all">{token.mint}</div>
-            </div>
-            
-            <div className="p-4 rounded-xl bg-[var(--accent-muted)] border border-[var(--accent)]/30">
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-xs text-[var(--accent)]">Automation wallet</div>
-                <a 
-                  href={`https://solscan.io/account/${token.creator_wallet}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)]"
-                >
-                  View
-                </a>
-              </div>
-              <div className="font-mono text-sm break-all">{token.creator_wallet}</div>
-            </div>
-          </div>
-
-          {/* Socials */}
-          {(token.twitter || token.telegram || token.website) && (
-            <div className="flex flex-wrap gap-2 mb-8">
-              {token.twitter && <ExtLink href={token.twitter}>Twitter</ExtLink>}
-              {token.telegram && <ExtLink href={token.telegram}>Telegram</ExtLink>}
-              {token.website && <ExtLink href={token.website}>Website</ExtLink>}
-            </div>
           )}
 
-          {/* Info */}
-          <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] card-shadow mb-8">
-            {token.status === "bonding" ? (
-              <p className="text-sm text-[var(--text-secondary)]">
-                <span className="text-[var(--warning)] font-medium">Bonding:</span> Only buybacks active. LP added after graduation (~$55k).
-              </p>
-            ) : (
-              <p className="text-sm text-[var(--text-secondary)]">
-                <span className="text-[var(--success)] font-medium">Graduated:</span> Full automation. Fees, buybacks, and LP every minute.
-              </p>
-            )}
-          </div>
-
-          {/* Chart */}
-          {token.mint && (
-            <div className="mb-8">
-              <h2 className="text-xl font-display mb-4">Price Chart</h2>
-              <div className="rounded-2xl overflow-hidden border border-[var(--border)] card-shadow" style={{ position: 'relative', paddingBottom: '65%' }}>
-                <iframe 
-                  src={`https://dexscreener.com/solana/${token.mint}?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartTheme=dark&theme=light&chartStyle=0&chartType=usd&interval=15`}
-                  style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, border: 0 }}
-                  title="Price Chart"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Activity History */}
-          {token.feed_history && token.feed_history.length > 0 && (
-            <div>
-              <h2 className="text-xl font-display mb-4">Activity</h2>
-              <div className="space-y-2">
-                {token.feed_history.slice(0, 20).map((activity) => (
-                  <a
-                    key={activity.id}
-                    href={`https://solscan.io/tx/${activity.signature}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        activity.type === 'buyback' ? 'bg-[var(--success-muted)] text-[var(--success)]' :
-                        activity.type === 'lp_add' || activity.type === 'add_liquidity' ? 'bg-[var(--warning-muted)] text-[var(--warning)]' :
-                        activity.type === 'burn_tokens' || activity.type === 'burn_lp' ? 'bg-orange-100 text-orange-600' :
-                        activity.type === 'platform_buyback' || activity.type === 'platform_burn' ? 'bg-purple-100 text-purple-600' :
-                        'bg-[var(--bg-warm)] text-[var(--coral)]'
-                      }`}>
-                        {activity.type === 'buyback' ? 'Buyback' : 
-                         activity.type === 'lp_add' || activity.type === 'add_liquidity' ? 'LP Added' : 
-                         activity.type === 'burn_tokens' ? 'Burned' :
-                         activity.type === 'burn_lp' ? 'LP Burned' :
-                         activity.type === 'platform_buyback' ? 'SURGE Buyback' :
-                         activity.type === 'platform_burn' ? 'SURGE Burned' :
-                         activity.type === 'fee_claim' || activity.type === 'claim_fees' ? 'Fee Claim' : activity.type}
-                      </span>
-                      <span className="text-sm font-medium">
-                        {Number(activity.sol_amount).toFixed(4)} SOL
-                      </span>
+          {activeTab === "history" && (
+            <div className="card animate-fade-in">
+              <h3 className="text-lg font-semibold mb-4">Activity History</h3>
+              {history.length > 0 ? (
+                <div className="space-y-3">
+                  {history.map((item, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center">
+                        {item.action === "buyback" && "🔥"}
+                        {item.action === "claim" && "💰"}
+                        {item.action === "lp" && "💧"}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium capitalize">{item.action}</div>
+                        <div className="text-sm text-[var(--text-muted)]">
+                          {new Date(item.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold">{Number(item.amount_sol || 0).toFixed(4)} SOL</div>
+                        {item.tx_signature && (
+                          <a
+                            href={`https://solscan.io/tx/${item.tx_signature}`}
+                            target="_blank"
+                            rel="noopener"
+                            className="text-xs text-[var(--accent)] hover:underline"
+                          >
+                            View tx
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-xs text-[var(--text-muted)]">
-                      {new Date(activity.created_at).toLocaleString()}
-                    </span>
-                  </a>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 text-[var(--text-muted)]">
+                  No activity yet
+                </div>
+              )}
             </div>
           )}
-        </section>
+        </div>
       </main>
     </div>
   );
 }
 
-function StatCard({ label, value, suffix, accent }: { label: string; value: string; suffix?: string; accent?: boolean }) {
-  return (
-    <div className={`p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] card-shadow ${accent ? 'stat-accent' : ''}`}>
-      <div className="text-xs text-[var(--text-muted)] mb-1">{label}</div>
-      <div className={`text-lg font-display ${accent ? 'text-[var(--accent)]' : ''}`}>
-        {value}
-        {suffix && <span className="text-sm font-normal text-[var(--text-muted)] ml-1">{suffix}</span>}
-      </div>
-    </div>
-  );
-}
-
-function TokenImage({ imageUrl, mint, symbol }: { imageUrl: string | null; mint: string; symbol: string }) {
+function TokenImage({ token, size = "medium" }: { token: Token; size?: "medium" | "large" }) {
   const [error, setError] = useState(false);
-  const imageSrc = !error ? (imageUrl || `https://pump.fun/coin/${mint}/image`) : `https://pump.fun/coin/${mint}/image`;
-  
-  if (error && !imageUrl) {
+  const sizeClasses = size === "large" ? "w-20 h-20 rounded-2xl text-2xl" : "w-12 h-12 rounded-xl text-lg";
+
+  if (error || !token.image_url) {
     return (
-      <div className="w-16 h-16 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center font-display text-xl text-[var(--text-muted)]">
-        {symbol.slice(0, 2)}
+      <div className={`${sizeClasses} bg-gradient-to-br from-[var(--accent-subtle)] to-[var(--accent-secondary-glow)] flex items-center justify-center font-bold text-[var(--accent)]`}>
+        {token.symbol.slice(0, 2)}
       </div>
     );
   }
-  
+
   return (
-    <img src={imageSrc} alt={symbol} className="w-16 h-16 rounded-2xl object-cover border border-[var(--border)]" onError={() => setError(true)} />
+    <img
+      src={token.image_url}
+      alt={token.symbol}
+      className={`${sizeClasses} object-cover bg-[var(--bg-tertiary)]`}
+      onError={() => setError(true)}
+    />
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "live") {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium badge-live rounded-full">
-        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-        Live
-      </span>
-    );
+    return <span className="badge badge-live">Live</span>;
   }
-  return <span className="px-2.5 py-1 text-xs font-medium badge-bonding rounded-full">Bonding</span>;
+  if (status === "bonding") {
+    return <span className="badge badge-bonding">Bonding</span>;
+  }
+  return null;
 }
 
-function ExtLink({ href, children }: { href: string; children: React.ReactNode }) {
+function FeatureCard({ icon, name, active }: { icon: string; name: string; active: boolean }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-full border border-[var(--border)] text-sm hover:border-[var(--text)] transition-colors">
-      {children}
-    </a>
+    <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+      active 
+        ? "bg-[var(--accent-subtle)] border-[var(--accent)]/30" 
+        : "bg-[var(--bg-tertiary)] border-[var(--border)]"
+    }`}>
+      <span className="text-xl">{icon}</span>
+      <span className={active ? "font-medium" : "text-[var(--text-muted)]"}>{name}</span>
+      {active ? (
+        <span className="ml-auto text-[var(--accent)] text-sm">Active</span>
+      ) : (
+        <span className="ml-auto text-[var(--text-muted)] text-sm">Disabled</span>
+      )}
+    </div>
   );
 }

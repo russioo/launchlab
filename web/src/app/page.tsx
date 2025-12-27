@@ -1,341 +1,520 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { ActivityFeed } from "@/components/ActivityFeed";
-import { getTokens, getGlobalStats, type Token, type GlobalStats } from "@/lib/api";
+import { motion, useInView, useSpring, useTransform, useScroll } from "framer-motion";
 
-export default function Dashboard() {
-  const [tokens, setTokens] = useState<Token[]>([]);
-  const [stats, setStats] = useState<GlobalStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [tokensRes, statsRes] = await Promise.all([
-          getTokens({ status: filter || undefined }),
-          getGlobalStats(),
-        ]);
-        setTokens(tokensRes.tokens);
-        setStats(statsRes);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [filter]);
-
-  const graduatedTokens = tokens.filter(t => t.status === "live" || t.status === "graduating").length;
-
-  // Filter tokens by search
-  const filteredTokens = tokens.filter(t => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(q) ||
-      t.symbol.toLowerCase().includes(q) ||
-      t.mint?.toLowerCase().includes(q)
-    );
+// Animated counter component
+function AnimatedCounter({ value, suffix = "" }: { value: string; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const numericValue = parseFloat(value.replace(/[^0-9.]/g, "")) || 0;
+  const spring = useSpring(0, { duration: 2000, bounce: 0 });
+  const display = useTransform(spring, (v) => {
+    if (value.includes("%")) return `${Math.floor(v)}%`;
+    if (value.includes("/")) return value;
+    return Math.floor(v).toString();
   });
 
+  useEffect(() => {
+    if (isInView) {
+      spring.set(numericValue);
+    }
+  }, [isInView, numericValue, spring]);
+
+  if (value.includes("/")) {
+    return <span ref={ref}>{value}</span>;
+  }
+
+  return <motion.span ref={ref}>{display}</motion.span>;
+}
+
+// Fade up animation variant
+const fadeUpVariant = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+// Stagger container
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+};
+
+export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  const [activeFeature, setActiveFeature] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0.3]);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
-    <div className="min-h-screen relative">
-      {/* Organic flowing background */}
-      <div className="organic-bg">
-        <div className="blob blob-1" />
-        <div className="blob blob-2" />
-        <div className="blob blob-3" />
-      </div>
-
-      <Header />
+    <div className="min-h-screen bg-[var(--bg-cream)] relative overflow-x-hidden">
+      {/* Floating accent orb */}
+      <div 
+        className="fixed w-[500px] h-[500px] rounded-full pointer-events-none opacity-20"
+        style={{ 
+          background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
+          top: '10%', 
+          right: '-10%',
+          filter: 'blur(60px)',
+        }}
+      />
       
-      <main className="relative z-10 pt-28">
-        {/* Hero Section */}
-        <section className="max-w-6xl mx-auto px-5 py-12 lg:py-20">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left - Text */}
-            <div className="opacity-0 animate-fade-in-up">
-              <h1 className="hero-text font-display mb-8">
-                <span className="block text-[var(--text)]">Self-sustaining</span>
-                <span className="hero-gradient">liquidity</span>
-              </h1>
-              <p className="text-xl text-[var(--text-secondary)] mb-10 max-w-md leading-relaxed">
-                Launch on PumpFun. We handle automatic fee claiming, buybacks, and LP — forever.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link href="/launch" className="btn-primary inline-flex items-center gap-3">
-                  Launch token
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </Link>
-                <Link href="/docs" className="btn-secondary">
-                  How it works
-                </Link>
-              </div>
-            </div>
+      <Header />
 
-            {/* Right - Stats Card */}
-            <div className="opacity-0 animate-fade-in-up delay-200">
-              <div className="glass rounded-[32px] p-8 lg:p-10">
-                <div className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wider mb-8">
-                  Protocol stats
-                </div>
-                <div className="grid grid-cols-2 gap-8">
-                  <StatItem 
-                    value={stats?.totalTokens?.toString() || "0"} 
-                    label="Tokens launched" 
-                    loading={loading} 
-                  />
-                  <StatItem 
-                    value={graduatedTokens.toString()} 
-                    label="Graduated" 
-                    loading={loading} 
-                    accent 
-                  />
-                  <StatItem 
-                    value={`${((stats?.totalFeesClaimed || 0) + 80).toFixed(2)}`} 
-                    label="Fees claimed" 
-                    suffix="SOL" 
-                    loading={loading} 
-                  />
-                  <StatItem 
-                    value={`${((stats?.totalBuyback || 0) + 51.8193).toFixed(2)}`} 
-                    label="Bought back" 
-                    suffix="SOL" 
-                    loading={loading} 
-                    accent 
-                  />
-                </div>
-              </div>
+      <main className="relative z-10">
+        {/* Hero */}
+        <section ref={heroRef} className="pt-36 md:pt-40 pb-12 px-4 md:px-6 lg:px-8">
+          {/* Hero Card Container - Banner style like lumen.onl */}
+          <motion.div 
+            style={{ y: heroY, opacity: heroOpacity }}
+            className="max-w-[1400px] mx-auto rounded-[2rem] bg-[var(--bg-warm)]/95 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_60px_-15px_rgba(0,0,0,0.15)] ring-1 ring-white/50"
+          >
+            {/* Decorative background image */}
+            <div className="absolute inset-0 pointer-events-none">
+              <img 
+                src="/banner.png" 
+                alt="" 
+                className="absolute left-0 top-0 w-full h-full object-cover opacity-60"
+              />
+              {/* Gradient overlay for readability */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-warm)]/80 via-[var(--bg-warm)]/40 to-transparent" />
             </div>
-          </div>
-        </section>
-
-        {/* Flow Section */}
-        <section className="py-16 opacity-0 animate-fade-in-up delay-300">
-          <div className="max-w-6xl mx-auto px-5">
-            <div className="glass rounded-[32px] p-8 lg:p-12">
-              <div className="flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-10">
-                <span className="text-[var(--text-muted)] font-medium">Every minute</span>
-                <div className="flex items-center gap-4">
-                  <FlowStep num="1" text="Claim fees" />
-                  <FlowArrow />
-                  <FlowStep num="2" text="Buyback" />
-                  <FlowArrow />
-                  <FlowStep num="3" text="Add LP" accent />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Tokens + Activity Section */}
-        <section className="max-w-6xl mx-auto px-5 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-8">
-            {/* Tokens List */}
-            <div className="opacity-0 animate-fade-in-up delay-400">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6">
-                <h2 className="text-3xl font-display">All tokens</h2>
-                <div className="flex items-center gap-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
-                  {[null, "live", "bonding"].map((status) => (
-                    <button
-                      key={status || "all"}
-                      onClick={() => setFilter(status)}
-                      className={`px-5 py-2.5 text-sm font-medium rounded-full transition-all duration-300 ${
-                        filter === status
-                          ? "bg-gradient-to-r from-[var(--coral)] to-[var(--orange)] text-white shadow-md"
-                          : "text-[var(--text-muted)] hover:text-[var(--text)]"
-                      }`}
+            
+            {/* Content */}
+            <div className="relative z-10 w-full px-6 md:px-12 lg:px-16 py-12 md:py-16 lg:py-20">
+              <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                {/* Left - Text */}
+                <motion.div 
+                  initial="hidden"
+                  animate={mounted ? "visible" : "hidden"}
+                  variants={staggerContainer}
+                >
+                  <motion.div variants={fadeUpVariant} className="flex items-center gap-4 mb-8">
+                    <motion.div 
+                      className="w-8 h-[2px] bg-[var(--accent)]"
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: 0.6, delay: 0.3 }}
+                    />
+                    <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
+                      Universal Launchpad
+                    </span>
+                  </motion.div>
+                  
+                  <motion.h1 variants={fadeUpVariant} className="heading-xl mb-10">
+                    Launch tokens
+                    <br />
+                    <span className="text-italic">anywhere</span>
+                    <span className="text-[var(--accent)]">.</span>
+                  </motion.h1>
+                  
+                  <motion.p variants={fadeUpVariant} className="text-body max-w-lg mb-14">
+                    A unified launchpad that connects you to every platform. 
+                    Deploy on Pump.fun, configure tokenomics, and let automation 
+                    handle the rest.
+                  </motion.p>
+                  
+                  <motion.div variants={fadeUpVariant} className="flex flex-wrap items-center gap-12">
+                    <Link 
+                      href="/launch" 
+                      className="group inline-block"
                     >
-                      {status === "live" ? "Graduated" : status || "All"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Search */}
-              <div className="relative mb-6">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name, symbol, or mint..."
-                  className="w-full pl-12 pr-4 py-3 rounded-full bg-white/60 backdrop-blur-sm border border-[var(--border)] focus:border-[var(--coral)] focus:outline-none transition-colors text-sm"
-                />
-              </div>
-
-            {loading ? (
-              <div className="py-24 flex items-center justify-center">
-                <div className="loader" />
-              </div>
-            ) : filteredTokens.length > 0 ? (
-              <div className="grid gap-4">
-                {filteredTokens.map((token, index) => (
-                  <Link 
-                    key={token.id} 
-                    href={`/token/${token.id}`}
-                    className="token-card opacity-0 animate-fade-in-up"
-                    style={{ animationDelay: `${0.5 + index * 0.1}s` }}
-                  >
-                    <TokenImage imageUrl={token.image_url} mint={token.mint} symbol={token.symbol} />
+                      <span className="text-lg font-medium text-[var(--accent)]">Start launching</span>
+                      <motion.span 
+                        className="block h-[2px] bg-[var(--accent)] mt-1"
+                        whileHover={{ x: 10 }}
+                        transition={{ type: "spring", stiffness: 400 }}
+                      />
+                    </Link>
                     
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="font-semibold text-lg truncate">{token.name}</span>
-                        <StatusBadge status={token.status} />
-                      </div>
-                      <span className="text-sm text-[var(--text-muted)]">${token.symbol}</span>
-                    </div>
-
-                    <div className="hidden sm:flex items-center gap-8 text-right">
-                      <div>
-                        <div className="font-semibold text-lg">
-                          {Number(token.total_fees_claimed).toFixed(2)}
+                    <Link 
+                      href="/tokens" 
+                      className="group inline-block"
+                    >
+                      <span className="text-lg font-medium text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors duration-300">Explore tokens</span>
+                      <span className="block h-[2px] bg-transparent group-hover:bg-[var(--ink)] mt-1 transition-all duration-300" />
+                    </Link>
+                  </motion.div>
+                </motion.div>
+                
+                {/* Right - Video in Frame */}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={mounted ? { opacity: 1, scale: 1, y: 0 } : {}}
+                  transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  whileHover={{ scale: 1.02 }}
+                  className="relative"
+                >
+                  {/* White frame */}
+                  <div className="bg-white rounded-2xl p-3 shadow-2xl hover:shadow-[0_20px_80px_-20px_rgba(0,0,0,0.2)] transition-shadow duration-500">
+                    <div 
+                      className="relative aspect-[16/10] rounded-xl overflow-hidden bg-black cursor-pointer group"
+                      onClick={togglePlay}
+                    >
+                      {/* Video */}
+                      <video 
+                        ref={videoRef}
+                        autoPlay 
+                        loop 
+                        muted={isMuted}
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover z-10"
+                      >
+                        <source src="/hero-video.mp4" type="video/mp4" />
+                      </video>
+                      
+                      {/* Minimal Play indicator - only when paused */}
+                      {!isPlaying && (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
+                          <motion.div 
+                            className="px-5 py-2.5 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-2"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            <span className="text-sm text-white font-medium">Play</span>
+                          </motion.div>
                         </div>
-                        <div className="text-xs text-[var(--text-muted)]">fees claimed</div>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-lg hero-gradient">
-                          {(Number(token.total_buyback) + (token.mint === "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19" ? 30.12 : 0)).toFixed(2)}
+                      )}
+                      
+                      {/* Minimal sound toggle - bottom right corner only */}
+                      <motion.button 
+                        onClick={toggleMute}
+                        className="absolute bottom-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <div className="px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
+                          {isMuted ? (
+                            <>
+                              <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                              </svg>
+                              <span className="text-xs text-white/80 font-medium">Sound off</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              </svg>
+                              <span className="text-xs text-white/80 font-medium">Sound on</span>
+                            </>
+                          )}
                         </div>
-                        <div className="text-xs text-[var(--text-muted)]">bought back</div>
-                      </div>
+                      </motion.button>
                     </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        </section>
 
-                    <div className="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
+        {/* About - Interactive features */}
+        <section className="py-32 md:py-48">
+          <div className="container">
+            <div className="grid md:grid-cols-2 gap-20 md:gap-32 items-start">
+              <motion.div 
+                className="md:sticky md:top-32"
+                initial={{ opacity: 0, x: -40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="flex items-center gap-4 mb-6">
+                  <motion.div 
+                    className="w-8 h-[2px] bg-[var(--accent)]"
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                  />
+                  <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
+                    The Platform
+                  </span>
+                </div>
+                <h2 className="heading-lg mb-10">
+                  One dashboard,
+                  <br />
+                  <span className="text-italic">infinite reach</span>
+                </h2>
+                <p className="text-body mb-12 max-w-md">
+                  Stop juggling between platforms. Crosspad gives you a 
+                  single interface to launch across any launchpad, with built-in 
+                  automation for everything.
+                </p>
+                
+                <motion.div whileHover={{ x: 5 }} transition={{ type: "spring", stiffness: 400 }}>
+                  <Link 
+                    href="/docs" 
+                    className="text-[var(--accent)] font-medium border-b-2 border-[var(--accent)] pb-1 hover:text-[var(--ink)] hover:border-[var(--ink)] transition-colors duration-300"
+                  >
+                    Learn how it works
                   </Link>
+                </motion.div>
+              </motion.div>
+              
+              <div className="space-y-0">
+                {[
+                  { label: "Buyback & Burn", desc: "Automatic deflation. Tokens become scarcer with every trade." },
+                  { label: "Auto-Liquidity", desc: "Fees flow into LP. Depth grows continuously." },
+                  { label: "Holder Rewards", desc: "Distribute revenue or run jackpot draws." },
+                  { label: "24/7 Automation", desc: "Set it once. Runs forever without intervention." },
+                ].map((item, i) => (
+                  <div 
+                    key={item.label}
+                    className="group py-8 border-b border-[var(--ink)]/10 cursor-pointer relative"
+                    onMouseEnter={() => setActiveFeature(i)}
+                    onMouseLeave={() => setActiveFeature(null)}
+                  >
+                    {/* Active indicator */}
+                    <div 
+                      className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 bg-[var(--accent)] rounded-full transition-all duration-300 ${
+                        activeFeature === i ? 'h-12 opacity-100' : 'h-0 opacity-0'
+                      }`}
+                    />
+                    
+                    <div className={`flex items-start justify-between gap-8 transition-all duration-300 ${
+                      activeFeature === i ? 'pl-6' : 'pl-0'
+                    }`}>
+                      <div>
+                        <h3 className={`text-xl font-medium mb-2 transition-colors duration-300 ${
+                          activeFeature === i ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
+                        }`}>
+                          {item.label}
+                        </h3>
+                        <p className="text-[var(--ink-muted)] max-w-sm">
+                          {item.desc}
+                        </p>
+                      </div>
+                      <span className={`text-sm font-mono mt-1 transition-colors duration-300 ${
+                        activeFeature === i ? 'text-[var(--accent)]' : 'text-[var(--ink-faded)]'
+                      }`}>
+                        0{i + 1}
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
-            ) : search ? (
-              <div className="glass rounded-[32px] py-16 text-center">
-                <h3 className="text-xl font-display mb-2">No results found</h3>
-                <p className="text-[var(--text-muted)]">Try a different search term</p>
-              </div>
-            ) : (
-              <div className="glass rounded-[32px] py-20 text-center">
-                <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-gradient-to-br from-[var(--peach)] to-[var(--coral-soft)] flex items-center justify-center">
-                  <div className="w-4 h-4 rounded-full bg-gradient-to-br from-[var(--coral)] to-[var(--orange)] animate-pulse" />
-                </div>
-                <h3 className="text-2xl font-display mb-3">No tokens yet</h3>
-                <p className="text-[var(--text-muted)] mb-8">Be the first to launch</p>
-                <Link href="/launch" className="btn-primary inline-flex items-center gap-3">
-                  Launch token
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </Link>
-              </div>
-            )}
             </div>
-
-            {/* Activity Feed - Sidebar */}
-            <div className="opacity-0 animate-fade-in-up delay-500 hidden lg:block">
-              <div className="sticky top-28">
-                <ActivityFeed />
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Activity Feed */}
-          <div className="lg:hidden mt-8 opacity-0 animate-fade-in-up delay-500">
-            <ActivityFeed />
           </div>
         </section>
 
-        {/* Bottom spacer */}
-        <div className="h-20" />
+        {/* Stats with banner card */}
+        <motion.section 
+          className="py-12 px-4 md:px-6 lg:px-8"
+          initial={{ opacity: 0, y: 60 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {/* Stats Card Container - Same style as hero */}
+          <div className="max-w-[1400px] mx-auto rounded-[2rem] bg-[var(--bg-warm)]/95 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_60px_-15px_rgba(0,0,0,0.15)] ring-1 ring-white/50">
+            {/* Decorative background image */}
+            <div className="absolute inset-0 pointer-events-none">
+              <img 
+                src="/banner.png" 
+                alt="" 
+                className="absolute left-0 top-0 w-full h-full object-cover opacity-40"
+              />
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-[var(--bg-warm)]/60" />
+            </div>
+            
+            {/* Stats Content */}
+            <div className="relative z-10 py-12 md:py-16 px-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0">
+                {[
+                  { value: "3", label: "Platforms" },
+                  { value: "0", label: "Fees", suffix: "%" },
+                  { value: "24/7", label: "Automation" },
+                  { value: "99.9%", label: "Uptime" },
+                ].map((stat, i) => (
+                  <motion.div 
+                    key={stat.label} 
+                    className={`group py-6 md:py-8 text-center cursor-default ${i < 3 ? 'md:border-r md:border-[var(--ink)]/10' : ''}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <p className="font-serif text-4xl md:text-6xl text-[var(--ink)] mb-3 group-hover:text-[var(--accent)] transition-colors duration-300">
+                      <AnimatedCounter value={stat.value} />
+                      {stat.suffix || ""}
+                    </p>
+                    <p className="text-sm text-[var(--ink-muted)] uppercase tracking-widest group-hover:text-[var(--ink)] transition-colors duration-300">
+                      {stat.label}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* Platforms - Interactive list */}
+        <section className="py-32 md:py-48">
+          <div className="container">
+            <div className="max-w-xl mb-20">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-8 h-[2px] bg-[var(--accent)]" />
+                <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
+                  Integrations
+                </span>
+              </div>
+              <h2 className="heading-lg">
+                Every major
+                <br />
+                <span className="text-italic">launchpad</span>
+              </h2>
+            </div>
+            
+            <div className="space-y-0">
+              {[
+                { name: "Pump.fun", desc: "The original meme token launchpad", status: "live" },
+                { name: "Bags", desc: "Next-gen token launches", status: "soon" },
+                { name: "Bonk", desc: "Community-powered launchpad", status: "soon" },
+              ].map((platform, i) => (
+                <div 
+                  key={platform.name}
+                  className="group relative py-10 border-b border-[var(--ink)]/10 cursor-pointer overflow-hidden"
+                >
+                  {/* Hover background sweep */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)]/5 to-transparent translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />
+                  
+                  <div className="relative flex items-center justify-between">
+                    <div className="flex items-center gap-8 md:gap-16">
+                      <span className="text-[var(--ink-faded)] group-hover:text-[var(--accent)] text-sm font-mono w-8 transition-colors duration-300">
+                        0{i + 1}
+                      </span>
+                      <div>
+                        <h3 className="text-2xl md:text-3xl font-serif group-hover:text-[var(--accent)] transition-colors duration-300">
+                          {platform.name}
+                        </h3>
+                        <p className="text-[var(--ink-muted)] mt-1 hidden md:block">
+                          {platform.desc}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {platform.status === "live" ? (
+                        <span className="text-sm text-[var(--accent)] italic">Ready</span>
+                      ) : (
+                        <span className="text-sm text-[var(--ink-faded)] italic">Soon</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA with accent glow */}
+        <section className="py-32 md:py-48 relative">
+          <div className="container">
+            {/* Background glow */}
+            <div 
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full opacity-30 pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
+                filter: 'blur(80px)',
+              }}
+            />
+            
+            <div className="text-center max-w-3xl mx-auto relative">
+              <h2 className="heading-xl mb-8">
+                Ready to
+                <br />
+                <span className="text-italic">launch</span>
+                <span className="text-[var(--accent)]">?</span>
+              </h2>
+              <p className="text-body mb-14 max-w-md mx-auto">
+                No subscriptions. No hidden fees. Connect your wallet and 
+                deploy your token in minutes.
+              </p>
+              
+              <Link 
+                href="/launch" 
+                className="group inline-block"
+              >
+                <span className="text-2xl md:text-3xl font-serif text-[var(--accent)] group-hover:text-[var(--ink)] transition-colors duration-300">
+                  Open App
+                </span>
+                <span className="block h-[2px] w-full bg-[var(--accent)] mt-2 group-hover:bg-[var(--ink)] transition-all duration-300" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="py-12 border-t border-[var(--ink)]/5">
+          <div className="container flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+              <span className="font-serif text-xl text-[var(--ink)]">Crosspad</span>
+            </div>
+            <div className="flex items-center gap-8 text-sm text-[var(--ink-muted)]">
+              <Link href="/docs" className="hover:text-[var(--accent)] transition-colors">
+                Docs
+              </Link>
+              <a 
+                href="https://twitter.com" 
+                target="_blank" 
+                rel="noopener"
+                className="hover:text-[var(--accent)] transition-colors"
+              >
+                Twitter
+              </a>
+              <span>© 2025</span>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   );
-}
-
-function StatItem({ value, label, suffix, loading, accent }: { 
-  value: string; 
-  label: string;
-  suffix?: string;
-  loading?: boolean;
-  accent?: boolean;
-}) {
-  return (
-    <div>
-      {loading ? (
-        <div className="h-10 w-20 skeleton mb-2" />
-      ) : (
-        <div className={`text-3xl font-display ${accent ? 'hero-gradient' : 'text-[var(--text)]'}`}>
-          {value}
-          {suffix && <span className="text-base font-normal text-[var(--text-muted)] ml-1">{suffix}</span>}
-        </div>
-      )}
-      <div className="text-sm text-[var(--text-muted)]">{label}</div>
-    </div>
-  );
-}
-
-function FlowStep({ num, text, accent }: { num: string; text: string; accent?: boolean }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className={`step-dot ${accent ? 'step-dot-active' : 'step-dot-inactive'}`}>
-        {num}
-      </span>
-      <span className="text-sm font-medium hidden sm:inline">{text}</span>
-    </div>
-  );
-}
-
-function FlowArrow() {
-  return (
-    <div className="step-line hidden sm:block" />
-  );
-}
-
-function TokenImage({ imageUrl, mint, symbol }: { imageUrl: string | null; mint: string; symbol: string }) {
-  const [error, setError] = useState(false);
-  
-  const imageSrc = !error && imageUrl ? imageUrl : `https://pump.fun/coin/${mint}/image`;
-  
-  if (!imageUrl && error) {
-    return (
-      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--peach)] to-[var(--coral-soft)] flex items-center justify-center font-semibold text-[var(--coral)] text-sm">
-        {symbol.slice(0, 2)}
-      </div>
-    );
-  }
-  
-  return (
-    <img 
-      src={imageSrc} 
-      alt={symbol}
-      className="token-image"
-      onError={() => setError(true)}
-    />
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  if (status === "live") {
-    return <span className="badge badge-live">Live</span>;
-  }
-  
-  if (status === "bonding") {
-    return <span className="badge badge-bonding">Bonding</span>;
-  }
-
-  return null;
 }

@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
 import { WalletProvider } from "@/components/WalletProvider";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SURGE — Self-Sustaining Liquidity Engine",
-  description: "Launch tokens with automatic buybacks and self-sustaining liquidity. The future of token launches.",
+  title: "CROSSPAD — Launch on Any Platform",
+  description: "The universal token launchpad. Launch across Pump.fun, Bags, Bonk & more with customizable features like buyback, burn, jackpot, and auto-liquidity.",
   icons: {
     icon: "/favicon.ico",
     apple: "/logo.png",
+  },
+  openGraph: {
+    title: "CROSSPAD — Launch on Any Platform",
+    description: "The universal token launchpad. Cross any pad. Launch anywhere.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CROSSPAD",
+    description: "Cross any pad. Launch anywhere.",
   },
 };
 
@@ -19,9 +28,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="antialiased noise">
-        <WalletProvider>{children}</WalletProvider>
+    <html lang="en">
+      <body className="antialiased">
+        <WalletProvider>
+          <SmoothScroll>{children}</SmoothScroll>
+        </WalletProvider>
       </body>
     </html>
   );

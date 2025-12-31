@@ -15,14 +15,22 @@ const platforms = [
   { id: "moonshot", name: "MOONSHOT", desc: "Dexscreener's launchpad", status: "coming" },
 ];
 
-const featureDefinitions = {
+interface FeatureDefinition {
+  id: string;
+  name: string;
+  desc: string;
+  platforms: string[];
+  group?: string;
+}
+
+const featureDefinitions: Record<string, FeatureDefinition> = {
   buyback_burn: { id: "buyback_burn", name: "Buyback & Burn", desc: "Auto buy + burn tokens", platforms: ["pumpfun", "bags", "bonk"] },
   auto_liquidity: { id: "auto_liquidity", name: "Auto-Liquidity", desc: "Fees → LP depth", platforms: ["pumpfun"] },
   jackpot: { id: "jackpot", name: "Jackpot", desc: "Random holder rewards", platforms: ["pumpfun", "bags", "bonk"], group: "rewards" },
   revenue_share: { id: "revenue_share", name: "Revenue Share", desc: "Distribute to holders", platforms: ["pumpfun", "bags", "bonk"], group: "rewards" },
 };
 
-type FeatureId = keyof typeof featureDefinitions;
+type FeatureId = "buyback_burn" | "auto_liquidity" | "jackpot" | "revenue_share";
 type Step = "platform" | "features" | "details" | "review";
 
 export default function LaunchPage() {

@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(parsed);
         // Validate session with backend
         validateSession(parsed.id);
-      } catch (e) {
+      } catch {
         localStorage.removeItem("LAUNCHLAB_user");
       }
     }
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("LAUNCHLAB_user");
         setUser(null);
       }
-    } catch (e) {
+    } catch {
       // Keep user logged in offline
     }
   };
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem("LAUNCHLAB_user", JSON.stringify(data.user));
       return { success: true };
-    } catch (e) {
+    } catch {
       return { success: false, error: "Connection failed" };
     }
   };
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         success: true, 
         wallet: data.user.wallet 
       };
-    } catch (e) {
+    } catch {
       return { success: false, error: "Connection failed" };
     }
   };

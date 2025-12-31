@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 
 function formatAmount(amount: number): string {
   if (amount === 0) return "0";
-  let val = amount > 1_000_000_000_000 ? amount / 1_000_000 : amount;
+  const val = amount > 1_000_000_000_000 ? amount / 1_000_000 : amount;
   if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(2)}B`;
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`;
   if (val >= 1_000) return `${(val / 1_000).toFixed(2)}K`;
@@ -46,6 +46,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) loadTokens();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadTokens = async () => {

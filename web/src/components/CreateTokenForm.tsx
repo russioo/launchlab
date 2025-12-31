@@ -93,8 +93,8 @@ export function CreateTokenForm() {
       setTimeout(() => {
         router.push(`/token/${result.tokenId}`);
       }, 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to create token");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create token");
       setStep("form");
     } finally {
       setIsSubmitting(false);

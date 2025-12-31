@@ -56,7 +56,7 @@ export async function getTokenInfo(mint: string) {
   return res.json();
 }
 
-export async function updateTokenSettings(mint: string, userId: string, settings: Record<string, any>) {
+export async function updateTokenSettings(mint: string, userId: string, settings: Record<string, unknown>) {
   const res = await fetch(`${API_URL}/api/tokens/settings/${mint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

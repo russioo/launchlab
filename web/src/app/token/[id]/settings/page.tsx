@@ -72,6 +72,7 @@ export default function TokenSettingsPage() {
       return;
     }
     fetchToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, tokenId, router]);
 
   const fetchToken = async () => {
@@ -99,8 +100,8 @@ export default function TokenSettingsPage() {
       } else {
         setError(data.error || "Token not found");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch token");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to fetch token");
     }
     setIsLoading(false);
   };
@@ -150,13 +151,13 @@ export default function TokenSettingsPage() {
       } else {
         setError(data.error || "Failed to save settings");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to save settings");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save settings");
     }
     setIsSaving(false);
   };
 
-  const updateSetting = (key: string, value: any) => {
+  const updateSetting = (key: string, value: string | number | boolean) => {
     setSettings(prev => {
       const newSettings = { ...prev, [key]: value };
       

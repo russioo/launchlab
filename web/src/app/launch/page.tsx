@@ -97,14 +97,14 @@ export default function LaunchPage() {
     setDeploying(true);
     setError(null);
     try {
-      const enabledFeatures = Object.entries(features).filter(([_, c]) => c.enabled).map(([id]) => id);
+      const enabledFeatures = Object.entries(features).filter(([, c]) => c.enabled).map(([id]) => id);
       const result = await deployToken({
         userId: user.id, platform: selectedPlatform!, name: tokenDetails.name, symbol: tokenDetails.symbol,
         description: tokenDetails.description, initialBuy: tokenDetails.initialBuy, features: enabledFeatures, image: tokenDetails.image || undefined,
       });
       router.push(`/token/${result.mint || result.tokenId}`);
-    } catch (err: any) {
-      setError(err.message || "Failed to deploy");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to deploy");
     } finally {
       setDeploying(false);
     }
@@ -296,7 +296,7 @@ export default function LaunchPage() {
                   <div className="p-5 bg-[var(--grey-200)]">
                     <span className="text-small text-[var(--grey-500)] block mb-3">ACTIVE FEATURES</span>
                     <div className="space-y-2">
-                      {Object.entries(features).filter(([_, c]) => c.enabled).map(([id, c]) => (
+                      {Object.entries(features).filter(([, c]) => c.enabled).map(([id, c]) => (
                         <div key={id} className="flex justify-between">
                           <span>{featureDefinitions[id as FeatureId].name}</span>
                           <span className="text-[var(--lime)] font-mono">{c.percent}%</span>

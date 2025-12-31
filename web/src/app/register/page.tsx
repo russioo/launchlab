@@ -82,7 +82,7 @@ export default function RegisterPage() {
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                   <label className="caption block mb-1 text-yellow-500">Private Key (Save this!)</label>
                   <code className="text-sm break-all text-yellow-400">{walletInfo.privateKey}</code>
-                  <p className="text-xs text-yellow-600 mt-2">⚠️ Store securely. Won't be shown again!</p>
+                  <p className="text-xs text-yellow-600 mt-2">Store securely. Will not be shown again!</p>
                 </div>
               </div>
 

@@ -8,307 +8,124 @@ import { useState } from "react";
 const features = [
   {
     id: "buyback_burn",
-    name: "Buyback & Burn",
-    description: "Automatically purchases tokens from the market using collected fees and burns them permanently. This creates constant buying pressure and reduces total supply over time, making your token deflationary.",
-    howItWorks: [
-      "Creator fees are claimed automatically every cycle",
-      "A percentage is used to buy tokens from the open market",
-      "Purchased tokens are sent to a burn address (destroyed forever)",
-      "Supply decreases, scarcity increases"
-    ]
+    name: "BUYBACK & BURN",
+    description: "Automatically purchases tokens from the market using collected fees and burns them permanently. Creates deflationary pressure.",
+    steps: ["Fees claimed automatically", "Tokens bought from market", "Sent to burn address", "Supply decreases forever"]
   },
   {
     id: "auto_liquidity",
-    name: "Auto-Liquidity",
-    description: "Collected fees are automatically added to liquidity pools, creating deeper and more stable trading. The LP tokens are burned, making the liquidity permanent and unruggable.",
-    howItWorks: [
-      "Fees are claimed and split between token buyback and SOL",
-      "Both sides are added to the liquidity pool",
-      "LP tokens received are immediately burned",
-      "Liquidity grows forever, can never be removed"
-    ]
+    name: "AUTO-LIQUIDITY",
+    description: "Collected fees automatically add to liquidity pools. LP tokens are burned, making liquidity permanent.",
+    steps: ["Fees split for LP", "Added to liquidity pool", "LP tokens burned", "Liquidity locked forever"]
   },
   {
     id: "jackpot",
-    name: "Jackpot Rewards",
-    description: "A portion of trading fees goes into a jackpot pool. Random token holders are selected to win SOL rewards, creating excitement and incentivizing holding.",
-    howItWorks: [
-      "Percentage of fees goes to jackpot pool",
-      "Random holder is selected (weighted by holdings)",
-      "Winner receives SOL directly to their wallet",
-      "Creates gamified holding experience"
-    ]
+    name: "JACKPOT REWARDS",
+    description: "Random token holders win SOL rewards from trading fees. Creates gamified holding experience.",
+    steps: ["Fees go to jackpot pool", "Random holder selected", "Winner receives SOL", "Repeat every cycle"]
   },
   {
     id: "revenue_share",
-    name: "Revenue Share",
-    description: "Distribute trading fees proportionally to all token holders. The more you hold, the more you earn. Passive income for your community.",
-    howItWorks: [
-      "Fees are collected from trading activity",
-      "Snapshot of all holders is taken",
-      "Rewards distributed based on holding percentage",
-      "Automatic, no claiming required"
-    ]
+    name: "REVENUE SHARE",
+    description: "Distribute trading fees proportionally to all holders. Passive income for your community.",
+    steps: ["Fees collected", "Holder snapshot taken", "Rewards distributed", "Automatic, no claiming"]
   },
 ];
 
 const platforms = [
-  {
-    id: "pumpfun",
-    name: "Pump.fun",
-    status: "Live",
-    description: "The original memecoin launchpad. Bonding curve model with automatic graduation to DEX.",
-  },
-  {
-    id: "moonshot",
-    name: "Moonshot",
-    status: "Coming Soon",
-    description: "Dexscreener's launchpad. Integrated with the largest DEX aggregator.",
-  },
-  {
-    id: "believe",
-    name: "Believe",
-    status: "Coming Soon",
-    description: "Community-first token launches with built-in social features.",
-  },
-  {
-    id: "raydium",
-    name: "Raydium LaunchLab",
-    status: "Coming Soon",
-    description: "Launch directly on Raydium with instant liquidity.",
-  },
+  { name: "PUMP.FUN", status: "LIVE", desc: "Original memecoin launchpad with bonding curve" },
+  { name: "BAGS.FM", status: "LIVE", desc: "Token-2022 with built-in creator fees" },
+  { name: "BONK.FUN", status: "LIVE", desc: "Raydium LaunchLab powered by Bonk" },
+  { name: "MOONSHOT", status: "SOON", desc: "Dexscreener's launchpad integration" },
 ];
 
 const faqs = [
-  {
-    q: "How much does it cost?",
-    a: "CROSSPAD takes a small percentage of claimed fees (3%). There are no upfront costs — you only pay when your token is generating revenue."
-  },
-  {
-    q: "Can I change features after launching?",
-    a: "Some features can be adjusted after launch, but core tokenomics are locked for security. This protects your holders from rug pulls."
-  },
-  {
-    q: "Is my liquidity safe?",
-    a: "Yes. When using Auto-Liquidity, all LP tokens are burned immediately. This means the liquidity can never be removed — it's permanent."
-  },
-  {
-    q: "How often do features run?",
-    a: "The automation cycle runs every few minutes. Fees are claimed, processed, and distributed automatically 24/7."
-  },
-  {
-    q: "Which wallets are supported?",
-    a: "We support all major Solana wallets including Phantom, Solflare, Backpack, and more."
-  },
+  { q: "How much does it cost?", a: "LaunchLabs takes 3% of claimed fees. No upfront costs — you only pay when earning." },
+  { q: "Can I change features after launch?", a: "Some settings adjustable. Core tokenomics locked for security." },
+  { q: "Is liquidity safe?", a: "Yes. Auto-Liquidity burns LP tokens immediately — permanent and unruggable." },
+  { q: "How often do features run?", a: "Automation runs every few minutes. 24/7 fee processing." },
+  { q: "Which wallets work?", a: "Phantom, Solflare, Backpack, and all major Solana wallets." },
 ];
-
-const fadeUpVariant = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
-  }
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
-};
 
 export default function DocsPage() {
   const [activeFeature, setActiveFeature] = useState<number | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-cream)] relative overflow-x-hidden">
-      {/* Floating accent orbs */}
-      <div 
-        className="fixed w-[500px] h-[500px] rounded-full pointer-events-none opacity-20"
-        style={{ 
-          background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
-          top: '10%', 
-          right: '-10%',
-          filter: 'blur(60px)',
-        }}
-      />
-      <div 
-        className="fixed w-[400px] h-[400px] rounded-full pointer-events-none opacity-10"
-        style={{ 
-          background: 'radial-gradient(circle, var(--teal) 0%, transparent 70%)',
-          bottom: '20%', 
-          left: '-5%',
-          filter: 'blur(60px)',
-        }}
-      />
-      
+    <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="relative z-10 pt-32 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
+      <main className="pt-32 pb-20">
+        <div className="container max-w-4xl">
           {/* Header */}
-          <motion.div 
-            className="mb-20"
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-          >
-            <motion.div variants={fadeUpVariant} className="flex items-center gap-4 mb-6">
-              <motion.div 
-                className="w-8 h-[2px] bg-[var(--accent)]"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              />
-              <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                Documentation
-              </span>
-            </motion.div>
-            
-            <motion.h1 variants={fadeUpVariant} className="heading-lg mb-4">
-              Learn how
-              <br />
-              <span className="text-italic">it works</span>
-              <span className="text-[var(--accent)]">.</span>
-            </motion.h1>
-            
-            <motion.p variants={fadeUpVariant} className="text-body max-w-lg">
-              Everything you need to know about launching and automating your token on Crosspad.
-            </motion.p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-16">
+            <span className="text-small text-[var(--lime)] mb-4 block">Documentation</span>
+            <h1 className="heading-xl">HOW IT<br /><span className="text-[var(--grey-400)]">WORKS</span></h1>
           </motion.div>
 
-          {/* Quick Start Banner */}
-          <motion.section 
-            className="mb-20"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="rounded-[1.5rem] bg-[var(--bg-warm)]/80 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_40px_-15px_rgba(0,0,0,0.1)] ring-1 ring-white/60">
-              {/* Decorative background */}
-              <div className="absolute inset-0 pointer-events-none">
-                <img 
-                  src="/banner.png" 
-                  alt="" 
-                  className="absolute left-0 top-0 w-full h-full object-cover opacity-30"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-warm)]/90 via-[var(--bg-warm)]/60 to-transparent" />
+          {/* Quick Start */}
+          <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-20">
+            <div className="p-8 bg-[var(--grey-100)] border border-[var(--grey-200)]">
+              <span className="text-small text-[var(--lime)] block mb-6">QUICK START</span>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                {[
+                  { step: "01", title: "CONNECT", desc: "Wallet" },
+                  { step: "02", title: "SELECT", desc: "Platform" },
+                  { step: "03", title: "ENABLE", desc: "Features" },
+                  { step: "04", title: "ENTER", desc: "Details" },
+                  { step: "05", title: "DEPLOY", desc: "Token" },
+                ].map((item, i) => (
+                  <motion.div key={item.step} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.05 }}>
+                    <span className="font-display text-4xl text-[var(--grey-300)]">{item.step}</span>
+                    <div className="font-medium mt-1">{item.title}</div>
+                    <div className="text-small text-[var(--grey-500)]">{item.desc}</div>
+                  </motion.div>
+                ))}
               </div>
-              
-              <div className="relative z-10 p-8 md:p-10">
-                <div className="mb-8">
-                  <span className="text-[var(--accent)] text-sm font-medium tracking-wide">Get Started</span>
-                  <h2 className="font-serif text-2xl mt-1">Quick Start</h2>
-                </div>
-                
-                <div className="grid md:grid-cols-5 gap-8">
-                  {[
-                    { title: "Connect Wallet", desc: "Phantom, Solflare, etc." },
-                    { title: "Choose Platform", desc: "Select your launchpad" },
-                    { title: "Configure", desc: "Enable features" },
-                    { title: "Enter Details", desc: "Name, symbol, image" },
-                    { title: "Deploy", desc: "Sign and launch" },
-                  ].map((item, i) => (
-                    <motion.div 
-                      key={item.title} 
-                      className="relative"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 + i * 0.1 }}
-                    >
-                      <span className="font-serif text-4xl text-[var(--accent)]/20">{String(i + 1).padStart(2, '0')}</span>
-                      <div className="font-medium text-sm mt-1">{item.title}</div>
-                      <div className="text-xs text-[var(--ink-muted)] mt-0.5">{item.desc}</div>
-                    </motion.div>
-                  ))}
-                </div>
-                
-                <div className="mt-10">
-                  <Link 
-                    href="/launch" 
-                    className="group inline-block"
-                  >
-                    <span className="text-lg font-medium text-[var(--accent)]">Start launching</span>
-                    <motion.span 
-                      className="block h-[2px] bg-[var(--accent)] mt-1"
-                      whileHover={{ x: 10 }}
-                      transition={{ type: "spring", stiffness: 400 }}
-                    />
-                  </Link>
-                </div>
+              <div className="mt-8">
+                <Link href="/launch" className="btn btn-primary">Start Now →</Link>
               </div>
             </div>
           </motion.section>
 
-          {/* Features Section */}
+          {/* Features */}
           <section className="mb-20">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-8 h-[2px] bg-[var(--accent)]" />
-              <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                Features
-              </span>
-            </div>
-            <h2 className="heading-lg mb-10">
-              Built-in
-              <br />
-              <span className="text-italic">automation</span>
-            </h2>
-            
-            <div className="space-y-4">
-              {features.map((feature, i) => (
-                <motion.div 
-                  key={feature.id} 
-                  className="rounded-xl bg-white/60 border border-[var(--ink)]/5 overflow-hidden transition-all hover:shadow-lg"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+            <span className="text-small text-[var(--lime)] block mb-4">01 / FEATURES</span>
+            <h2 className="heading-lg mb-10">AUTOMATION</h2>
+            <div className="space-y-2">
+              {features.map((feat, i) => (
+                <motion.div
+                  key={feat.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="border border-[var(--grey-200)] hover:border-[var(--lime)] transition-colors"
                 >
-                  <button
-                    onClick={() => setActiveFeature(activeFeature === i ? null : i)}
-                    className="w-full p-6 text-left flex items-center justify-between gap-4 group"
-                  >
+                  <button onClick={() => setActiveFeature(activeFeature === i ? null : i)} className="w-full p-6 flex items-center justify-between text-left group">
                     <div>
-                      <span className="text-xs text-[var(--ink-faded)] uppercase tracking-wider">{feature.name}</span>
-                      <h3 className="font-serif text-xl mt-1 group-hover:text-[var(--accent)] transition-colors">{feature.name}</h3>
+                      <span className="font-display text-xl group-hover:text-[var(--lime)] transition-colors">{feat.name}</span>
                     </div>
-                    <motion.span
-                      className="text-[var(--ink-faded)] text-xl"
-                      animate={{ rotate: activeFeature === i ? 45 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      +
-                    </motion.span>
+                    <span className={`font-display text-2xl transition-transform ${activeFeature === i ? 'rotate-45' : ''}`}>+</span>
                   </button>
-                  
                   <motion.div
                     initial={false}
-                    animate={{ 
-                      height: activeFeature === i ? "auto" : 0,
-                      opacity: activeFeature === i ? 1 : 0
-                    }}
-                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    animate={{ height: activeFeature === i ? "auto" : 0, opacity: activeFeature === i ? 1 : 0 }}
+                    transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
                     <div className="px-6 pb-6">
-                      <p className="text-[var(--ink-muted)] mb-6 leading-relaxed">
-                        {feature.description}
-                      </p>
-                      <div className="p-5 bg-[var(--bg-soft)] rounded-xl">
-                        <div className="text-xs font-medium text-[var(--ink-faded)] uppercase tracking-wider mb-4">How it works</div>
-                        <ol className="space-y-3">
-                          {feature.howItWorks.map((step, j) => (
-                            <li key={j} className="flex items-start gap-4 text-sm text-[var(--ink-soft)]">
-                              <span className="font-serif text-[var(--accent)]/40 text-lg shrink-0 w-6">
-                                {String(j + 1).padStart(2, '0')}
-                              </span>
-                              <span className="pt-0.5">{step}</span>
-                            </li>
+                      <p className="text-body mb-6">{feat.description}</p>
+                      <div className="p-5 bg-[var(--grey-200)]">
+                        <span className="text-small text-[var(--grey-500)] block mb-4">HOW IT WORKS</span>
+                        <div className="space-y-3">
+                          {feat.steps.map((step, j) => (
+                            <div key={j} className="flex items-center gap-4">
+                              <span className="font-display text-[var(--lime)]">{String(j + 1).padStart(2, '0')}</span>
+                              <span className="text-sm">{step}</span>
+                            </div>
                           ))}
-                        </ol>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -317,96 +134,56 @@ export default function DocsPage() {
             </div>
           </section>
 
-          {/* Platforms Section */}
+          {/* Platforms */}
           <section className="mb-20">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-8 h-[2px] bg-[var(--accent)]" />
-              <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                Integrations
-              </span>
-            </div>
-            <h2 className="heading-lg mb-10">
-              Supported
-              <br />
-              <span className="text-italic">platforms</span>
-            </h2>
-            
+            <span className="text-small text-[var(--lime)] block mb-4">02 / PLATFORMS</span>
+            <h2 className="heading-lg mb-10">INTEGRATIONS</h2>
             <div className="grid md:grid-cols-2 gap-4">
-              {platforms.map((platform, i) => (
-                <motion.div 
-                  key={platform.id} 
-                  className="p-6 rounded-xl bg-white/60 border border-[var(--ink)]/5 hover:shadow-lg transition-all group"
+              {platforms.map((plat, i) => (
+                <motion.div
+                  key={plat.name}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  whileHover={{ y: -4 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="p-6 bg-[var(--grey-100)] border border-[var(--grey-200)] hover:border-[var(--lime)] transition-colors group"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <span className="font-serif text-xl group-hover:text-[var(--accent)] transition-colors">{platform.name}</span>
-                    {platform.status === "Live" ? (
-                      <span className="text-xs text-[var(--accent)] italic">Ready</span>
-                    ) : (
-                      <span className="text-xs text-[var(--ink-faded)] italic">Soon</span>
-                    )}
+                    <span className="font-display text-xl group-hover:text-[var(--lime)] transition-colors">{plat.name}</span>
+                    <span className={`badge ${plat.status === 'LIVE' ? 'badge-live' : 'badge-soon'}`}>{plat.status}</span>
                   </div>
-                  <p className="text-sm text-[var(--ink-muted)]">
-                    {platform.description}
-                  </p>
+                  <p className="text-body text-sm">{plat.desc}</p>
                 </motion.div>
               ))}
             </div>
           </section>
 
-          {/* FAQ Section */}
+          {/* FAQ */}
           <section className="mb-20">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-8 h-[2px] bg-[var(--accent)]" />
-              <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                Support
-              </span>
-            </div>
-            <h2 className="heading-lg mb-10">
-              Frequently
-              <br />
-              <span className="text-italic">asked</span>
-            </h2>
-            
-            <div className="space-y-3">
+            <span className="text-small text-[var(--lime)] block mb-4">03 / FAQ</span>
+            <h2 className="heading-lg mb-10">QUESTIONS</h2>
+            <div className="space-y-2">
               {faqs.map((faq, i) => (
-                <motion.div 
-                  key={i} 
-                  className="rounded-xl bg-white/60 border border-[var(--ink)]/5 overflow-hidden"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="border border-[var(--grey-200)]"
                 >
-                  <button
-                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                    className="w-full p-5 text-left flex items-center justify-between gap-4 group"
-                  >
-                    <h3 className="font-medium group-hover:text-[var(--accent)] transition-colors">{faq.q}</h3>
-                    <motion.span
-                      className="text-[var(--ink-faded)] text-xl shrink-0"
-                      animate={{ rotate: openFaq === i ? 45 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      +
-                    </motion.span>
+                  <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full p-5 flex items-center justify-between text-left group">
+                    <span className="font-medium group-hover:text-[var(--lime)] transition-colors">{faq.q}</span>
+                    <span className={`transition-transform ${openFaq === i ? 'rotate-45' : ''}`}>+</span>
                   </button>
-                  
                   <motion.div
                     initial={false}
-                    animate={{ 
-                      height: openFaq === i ? "auto" : 0,
-                      opacity: openFaq === i ? 1 : 0
-                    }}
-                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    animate={{ height: openFaq === i ? "auto" : 0, opacity: openFaq === i ? 1 : 0 }}
+                    transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
                     <div className="px-5 pb-5">
-                      <p className="text-[var(--ink-muted)] text-sm leading-relaxed">{faq.a}</p>
+                      <p className="text-body text-sm">{faq.a}</p>
                     </div>
                   </motion.div>
                 </motion.div>
@@ -414,66 +191,26 @@ export default function DocsPage() {
             </div>
           </section>
 
-          {/* CTA Section */}
-          <motion.section
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <div className="rounded-[1.5rem] bg-[var(--bg-warm)]/80 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_40px_-15px_rgba(0,0,0,0.1)] ring-1 ring-white/60 text-center p-12">
-              {/* Background glow */}
-              <div 
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[300px] rounded-full opacity-30 pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
-                  filter: 'blur(60px)',
-                }}
-              />
-              
-              <div className="relative z-10">
-                <h2 className="heading-lg mb-4">
-                  Ready to
-                  <br />
-                  <span className="text-italic">launch</span>
-                  <span className="text-[var(--accent)]">?</span>
-                </h2>
-                <p className="text-body mb-8 max-w-md mx-auto">
-                  Create your token in minutes with all the features you need.
-                </p>
-                <Link 
-                  href="/launch" 
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[var(--ink)] text-[var(--bg-cream)] font-medium hover:bg-[var(--accent)] transition-all hover:-translate-y-0.5"
-                >
-                  Launch Token
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
-              </div>
+          {/* CTA */}
+          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <div className="p-12 bg-[var(--lime)] text-black text-center">
+              <h2 className="heading-lg mb-4">READY TO<br />LAUNCH?</h2>
+              <p className="text-black/60 mb-8 max-w-md mx-auto">No subscriptions. No hidden fees. Deploy in minutes.</p>
+              <Link href="/launch" className="btn bg-black text-white hover:bg-[var(--grey-100)] py-5 px-10">Launch Token →</Link>
             </div>
           </motion.section>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-12 border-t border-[var(--ink)]/5">
-        <div className="container flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-            <span className="font-serif text-xl text-[var(--ink)]">Crosspad</span>
+      <footer className="py-12 border-t border-[var(--grey-200)]">
+        <div className="container flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-[var(--lime)]" />
+            <span className="font-display text-xl">LAUNCHLABS</span>
           </div>
-          <div className="flex items-center gap-8 text-sm text-[var(--ink-muted)]">
-            <Link href="/docs" className="hover:text-[var(--accent)] transition-colors">
-              Docs
-            </Link>
-            <a 
-              href="https://twitter.com" 
-              target="_blank" 
-              rel="noopener"
-              className="hover:text-[var(--accent)] transition-colors"
-            >
-              Twitter
-            </a>
+          <div className="flex items-center gap-8 text-sm text-[var(--grey-500)]">
+            <Link href="/docs" className="hover:text-[var(--lime)]">Docs</Link>
             <span>© 2025</span>
           </div>
         </div>

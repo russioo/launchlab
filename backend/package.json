@@ -9,18 +9,22 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@bagsfm/bags-sdk": "^1.2.2",
     "@coral-xyz/anchor": "^0.29.0",
     "@meteora-ag/dlmm": "^1.0.0",
     "@pump-fun/pump-sdk": "^1.24.0",
     "@pump-fun/pump-swap-sdk": "^1.11.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.31-alpha",
     "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.91.0",
     "@supabase/supabase-js": "^2.39.0",
+    "@types/multer": "^2.0.0",
     "bn.js": "^5.2.1",
     "bs58": "^5.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "multer": "^2.0.2",
     "node-cron": "^3.0.3"
   },
   "devDependencies": {

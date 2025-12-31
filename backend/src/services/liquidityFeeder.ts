@@ -18,13 +18,13 @@ interface TokenRecord {
 
 // Prevent overlapping cycles
 let isProcessing = false;
-let isSurgeProcessing = false;
+let isLAUNCHLABProcessing = false;
 
 // Delay helper
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Process a single token - shared logic for both SURGE priority and regular processing
+ * Process a single token - shared logic for both LAUNCHLAB priority and regular processing
  */
 async function processToken(token: TokenRecord): Promise<void> {
   console.log("");
@@ -70,12 +70,13 @@ async function processToken(token: TokenRecord): Promise<void> {
   }
 
   // Update aggregate stats using raw SQL increment
-  if (result.feesClaimed > 0 || result.buybackSol > 0 || result.lpSol > 0) {
+  if (result.feesClaimed > 0 || result.buybackSol > 0 || result.lpSol > 0 || result.tokensBurned > 0) {
     const { error: updateError } = await supabase.rpc('increment_token_stats', {
       p_token_id: token.id,
       p_fees: result.feesClaimed,
       p_buyback: result.buybackSol,
       p_lp: result.lpSol,
+      p_burned: result.tokensBurned,
     });
 
     if (updateError) {
@@ -83,7 +84,7 @@ async function processToken(token: TokenRecord): Promise<void> {
       console.log(`   ⚠️ RPC not available, using direct update`);
       const { data: currentToken } = await supabase
         .from("tokens")
-        .select("total_fees_claimed, total_buyback, total_lp_added")
+        .select("total_fees_claimed, total_buyback, total_lp_added, total_burned")
         .eq("id", token.id)
         .single();
 
@@ -91,6 +92,7 @@ async function processToken(token: TokenRecord): Promise<void> {
         updates.total_fees_claimed = (Number(currentToken.total_fees_claimed) || 0) + result.feesClaimed;
         updates.total_buyback = (Number(currentToken.total_buyback) || 0) + result.buybackSol;
         updates.total_lp_added = (Number(currentToken.total_lp_added) || 0) + result.lpSol;
+        updates.total_burned = (Number(currentToken.total_burned) || 0) + result.tokensBurned;
       }
     }
   }
@@ -104,6 +106,7 @@ async function processToken(token: TokenRecord): Promise<void> {
   // Record transactions in feed_history with correct amounts per type
   for (const tx of result.transactions) {
     let solAmount = 0;
+    let tokenAmount = tx.tokenAmount || 0;
     
     switch (tx.type) {
       case "claim_fees":
@@ -111,6 +114,7 @@ async function processToken(token: TokenRecord): Promise<void> {
         break;
       case "buyback":
         solAmount = result.buybackSol;
+        tokenAmount = result.buybackTokens;
         break;
       case "add_liquidity":
         solAmount = result.lpSol;
@@ -120,15 +124,15 @@ async function processToken(token: TokenRecord): Promise<void> {
         break;
       case "burn_tokens":
       case "burn_lp":
-        // Burns don't have SOL amount, but we still record them
+        // Burns use tokenAmount from transaction
         solAmount = 0;
         break;
       case "platform_buyback":
-        // Platform fee used to buyback SURGE (3% of claimed fees)
+        // Platform fee used to buyback LAUNCHLAB (3% of claimed fees)
         solAmount = result.feesClaimed * 0.03;
         break;
       case "platform_burn":
-        // SURGE tokens burned (platform fee)
+        // LAUNCHLAB tokens burned (platform fee)
         solAmount = 0;
         break;
       default:
@@ -140,54 +144,59 @@ async function processToken(token: TokenRecord): Promise<void> {
       type: tx.type,
       signature: tx.signature,
       sol_amount: solAmount,
-      token_amount: 0,
+      token_amount: tokenAmount,
     });
     
-    console.log(`   📝 Recorded: ${tx.type} = ${solAmount.toFixed(4)} SOL`);
+    // Log with appropriate unit
+    if (tx.type === "burn_tokens" || tx.type === "burn_lp" || tx.type === "platform_burn") {
+      console.log(`   📝 Recorded: ${tx.type} = ${tokenAmount.toFixed(2)} tokens`);
+    } else {
+      console.log(`   📝 Recorded: ${tx.type} = ${solAmount.toFixed(4)} SOL`);
+    }
   }
 }
 
 /**
- * Process SURGE token with first priority - runs every minute
+ * Process LAUNCHLAB token with first priority - runs every minute
  */
-export async function processSurgeToken(surgeMint: string): Promise<void> {
-  if (isSurgeProcessing) {
-    console.log("⏳ SURGE cycle still running, skipping...");
+export async function processLAUNCHLABToken(LAUNCHLABMint: string): Promise<void> {
+  if (isLAUNCHLABProcessing) {
+    console.log("⏳ LAUNCHLAB cycle still running, skipping...");
     return;
   }
   
-  isSurgeProcessing = true;
-  console.log("⚡ Processing SURGE token (priority)...");
+  isLAUNCHLABProcessing = true;
+  console.log("⚡ Processing LAUNCHLAB token (priority)...");
 
   const { data: token, error } = await supabase
     .from("tokens")
     .select("id, name, symbol, mint, creator_wallet, bot_wallet_private, status")
-    .eq("mint", surgeMint)
+    .eq("mint", LAUNCHLABMint)
     .single();
 
   if (error || !token) {
-    console.log("   SURGE token not found in database");
-    isSurgeProcessing = false;
+    console.log("   LAUNCHLAB token not found in database");
+    isLAUNCHLABProcessing = false;
     return;
   }
 
   if (!token.bot_wallet_private) {
-    console.log("   ⏭️ SURGE: No bot wallet configured");
-    isSurgeProcessing = false;
+    console.log("   ⏭️ LAUNCHLAB: No bot wallet configured");
+    isLAUNCHLABProcessing = false;
     return;
   }
 
   try {
     await processToken(token as TokenRecord);
   } catch (err: any) {
-    console.error(`   ❌ SURGE Error:`, err.message);
+    console.error(`   ❌ LAUNCHLAB Error:`, err.message);
   }
 
-  isSurgeProcessing = false;
+  isLAUNCHLABProcessing = false;
 }
 
 /**
- * Process all active tokens (excluding SURGE if specified)
+ * Process all active tokens (excluding LAUNCHLAB if specified)
  */
 export async function processAllTokens(excludeMint?: string): Promise<void> {
   // Prevent overlapping cycles
@@ -207,7 +216,7 @@ export async function processAllTokens(excludeMint?: string): Promise<void> {
     .in("status", ["bonding", "live", "graduating"])
     .not("mint", "is", null);
 
-  // Exclude SURGE token if specified (it runs on its own priority schedule)
+  // Exclude LAUNCHLAB token if specified (it runs on its own priority schedule)
   if (excludeMint) {
     query = query.neq("mint", excludeMint);
   }

@@ -7,18 +7,25 @@ export interface Token {
   symbol: string;
   description: string;
   image_url: string;
-  creator_wallet: string; // This is the dev wallet where all automation happens
+  creator_wallet: string;
+  platform?: string;
   status: "bonding" | "graduating" | "live" | "failed";
-  meteora_pool_address: string | null;
-  twitter: string | null;
-  telegram: string | null;
-  website: string | null;
   total_fees_claimed: number;
   total_buyback: number;
   total_lp_added: number;
+  total_burned?: number;
   created_at: string;
   graduated_at: string | null;
   last_feed_at: string | null;
+  // Feature settings
+  feature_buyback_enabled?: boolean;
+  feature_buyback_percent?: number;
+  feature_autoliq_enabled?: boolean;
+  feature_autoliq_percent?: number;
+  feature_revshare_enabled?: boolean;
+  feature_revshare_percent?: number;
+  feature_jackpot_enabled?: boolean;
+  feature_jackpot_percent?: number;
 }
 
 export interface GlobalStats {

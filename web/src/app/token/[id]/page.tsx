@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { getToken, getFeedHistory, type Token, type FeedHistory } from "@/lib/api";
+import { motion } from "framer-motion";
 
 export default function TokenDetailPage() {
   const params = useParams();
@@ -23,7 +24,10 @@ export default function TokenDetailPage() {
           getFeedHistory(tokenId),
         ]);
         setToken(tokenData);
-        setHistory(historyData);
+        const filteredHistory = historyData.filter(
+          (item) => !(item.type === "claim_fees" && Number(item.sol_amount) === 0)
+        );
+        setHistory(filteredHistory);
       } catch (error) {
         console.error("Failed to fetch token:", error);
       } finally {
@@ -38,12 +42,11 @@ export default function TokenDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen relative">
-        <div className="grid-bg" />
+      <div className="min-h-screen bg-black">
         <Header />
-        <main className="relative z-10 pt-24 pb-20">
-          <div className="max-w-4xl mx-auto px-6 flex items-center justify-center py-20">
-            <div className="loader" />
+        <main className="pt-32 pb-20">
+          <div className="container max-w-5xl flex items-center justify-center py-20">
+            <div className="w-6 h-6 border-2 border-[var(--grey-400)] border-t-[var(--lime)] animate-spin" />
           </div>
         </main>
       </div>
@@ -52,19 +55,15 @@ export default function TokenDetailPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen relative">
-        <div className="grid-bg" />
+      <div className="min-h-screen bg-black">
         <Header />
-        <main className="relative z-10 pt-24 pb-20">
-          <div className="max-w-4xl mx-auto px-6">
-            <div className="card text-center py-16">
-              <div className="text-4xl mb-4">🔍</div>
-              <h2 className="text-2xl font-bold mb-2">Token not found</h2>
-              <p className="text-[var(--text-secondary)] mb-6">
-                This token does not exist or has been removed.
-              </p>
-              <Link href="/tokens" className="btn btn-primary">
-                Browse Tokens
+        <main className="pt-32 pb-20">
+          <div className="container max-w-5xl">
+            <div className="p-12 bg-[var(--grey-100)] border border-[var(--grey-200)] text-center">
+              <h2 className="font-display text-4xl mb-4">TOKEN NOT FOUND</h2>
+              <p className="text-[var(--grey-500)] mb-8">This token does not exist or has been removed.</p>
+              <Link href="/tokens" className="inline-block px-8 py-4 bg-[var(--lime)] text-black font-medium hover:bg-white transition-colors">
+                BROWSE TOKENS
               </Link>
             </div>
           </div>
@@ -73,186 +72,311 @@ export default function TokenDetailPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen relative">
-      {/* Background */}
-      <div className="grid-bg" />
-      <div className="glow-orb glow-orb-1" />
+  const features = [
+    { name: "Buyback & Burn", active: token.feature_buyback_enabled ?? true, percent: token.feature_buyback_percent ?? 0 },
+    { name: "Auto-Liquidity", active: token.feature_autoliq_enabled ?? false, percent: token.feature_autoliq_percent ?? 0 },
+    { name: "Revenue Share", active: token.feature_revshare_enabled ?? false, percent: token.feature_revshare_percent ?? 0 },
+    { name: "Jackpot", active: token.feature_jackpot_enabled ?? false, percent: token.feature_jackpot_percent ?? 0 },
+  ];
 
+  const stats = [
+    { label: "FEES CLAIMED", value: `${Number(token.total_fees_claimed || 0).toFixed(4)}`, suffix: "SOL" },
+    { label: "BOUGHT BACK", value: `${Number(token.total_buyback || 0).toFixed(4)}`, suffix: "SOL" },
+    { label: "TOKENS BURNED", value: formatNumber(Number(token.total_burned || 0)), suffix: "" },
+    { label: "LP ADDED", value: `${Number(token.total_lp_added || 0).toFixed(4)}`, suffix: "SOL" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="relative z-10 pt-24 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
+      <main className="pt-32 pb-20">
+        <div className="container max-w-5xl">
           {/* Back link */}
-          <Link 
-            href="/tokens" 
-            className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-6 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-            </svg>
-            Back to tokens
-          </Link>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <Link href="/tokens" className="inline-flex items-center gap-2 text-xs tracking-wider text-[var(--grey-500)] hover:text-[var(--lime)] mb-8 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              BACK TO TOKENS
+            </Link>
+          </motion.div>
 
           {/* Token Header */}
-          <div className="card mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-              <TokenImage token={token} size="large" />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="p-8 bg-[var(--grey-100)] border border-[var(--grey-200)] mb-6"
+          >
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              <TokenImage token={token} />
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold">{token.name}</h1>
+                <div className="flex flex-wrap items-center gap-4 mb-2">
+                  <h1 className="font-display text-4xl md:text-5xl tracking-tight">{token.name}</h1>
                   <StatusBadge status={token.status} />
                 </div>
-                <div className="text-[var(--text-muted)] mb-4">${token.symbol}</div>
+                <div className="text-[var(--grey-500)] font-mono text-lg mb-4">${token.symbol}</div>
                 {token.mint && (
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs font-mono bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-lg text-[var(--text-secondary)]">
-                      {token.mint.slice(0, 8)}...{token.mint.slice(-8)}
+                  <div className="flex items-center gap-3">
+                    <code className="text-xs tracking-wider font-mono bg-[var(--grey-200)] px-3 py-2 text-[var(--grey-400)]">
+                      {token.mint.slice(0, 12)}...{token.mint.slice(-12)}
                     </code>
                     <button 
                       onClick={() => navigator.clipboard.writeText(token.mint)}
-                      className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                      className="p-2 bg-[var(--grey-200)] hover:bg-[var(--lime)] hover:text-black transition-all"
                       title="Copy address"
                     >
-                      <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     </button>
                     <a
                       href={`https://solscan.io/token/${token.mint}`}
                       target="_blank"
                       rel="noopener"
-                      className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                      className="p-2 bg-[var(--grey-200)] hover:bg-[var(--lime)] hover:text-black transition-all"
                       title="View on Solscan"
                     >
-                      <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                     </a>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="stat-card">
-              <div className="stat-value">{Number(token.total_fees_claimed || 0).toFixed(2)}</div>
-              <div className="stat-label">Fees Claimed (SOL)</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{Number(token.total_buyback || 0).toFixed(2)}</div>
-              <div className="stat-label">Bought Back (SOL)</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">0</div>
-              <div className="stat-label">Tokens Burned</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{Number(token.total_lp_added || 0).toFixed(2)}</div>
-              <div className="stat-label">LP Added (SOL)</div>
-            </div>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--grey-200)] mb-6"
+          >
+            {stats.map((stat) => (
+              <div key={stat.label} className="p-6 bg-[var(--grey-100)]">
+                <div className="text-xs tracking-wider text-[var(--grey-500)] mb-2">{stat.label}</div>
+                <div className="font-display text-2xl md:text-3xl text-[var(--lime)]">
+                  {stat.value}
+                  {stat.suffix && <span className="text-lg text-[var(--grey-500)] ml-1">{stat.suffix}</span>}
+                </div>
+              </div>
+            ))}
+          </motion.div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-6 p-1 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border)] inline-flex">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex gap-px bg-[var(--grey-200)] mb-6"
+          >
             <button
               onClick={() => setActiveTab("overview")}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                activeTab === "overview"
-                  ? "bg-[var(--accent)] text-[var(--bg-primary)]"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              className={`flex-1 md:flex-none px-8 py-4 text-xs tracking-wider transition-all ${
+                activeTab === "overview" ? 'bg-[var(--lime)] text-black font-medium' : 'bg-[var(--grey-100)] text-[var(--grey-500)] hover:text-white'
               }`}
             >
-              Overview
+              OVERVIEW
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                activeTab === "history"
-                  ? "bg-[var(--accent)] text-[var(--bg-primary)]"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              className={`flex-1 md:flex-none px-8 py-4 text-xs tracking-wider transition-all ${
+                activeTab === "history" ? 'bg-[var(--lime)] text-black font-medium' : 'bg-[var(--grey-100)] text-[var(--grey-500)] hover:text-white'
               }`}
             >
-              History
+              HISTORY [{history.length}]
             </button>
-          </div>
+          </motion.div>
 
           {/* Tab Content */}
-          {activeTab === "overview" && (
-            <div className="card animate-fade-in">
-              <h3 className="text-lg font-semibold mb-4">Active Features</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <FeatureCard icon="🔥" name="Buyback & Burn" active={true} />
-                <FeatureCard icon="💧" name="Auto-Liquidity" active={true} />
-                <FeatureCard icon="🎰" name="Jackpot" active={false} />
-                <FeatureCard icon="📈" name="Revenue Share" active={false} />
-              </div>
-
-              {token.description && (
-                <div className="mt-6 pt-6 border-t border-[var(--border)]">
-                  <h3 className="text-lg font-semibold mb-3">Description</h3>
-                  <p className="text-[var(--text-secondary)]">{token.description}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === "history" && (
-            <div className="card animate-fade-in">
-              <h3 className="text-lg font-semibold mb-4">Activity History</h3>
-              {history.length > 0 ? (
-                <div className="space-y-3">
-                  {history.map((item, i) => (
-                    <div key={i} className="flex items-center gap-4 p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center">
-                        {item.type === "buyback" && "🔥"}
-                        {item.type === "claim_fees" && "💰"}
-                        {item.type === "add_liquidity" && "💧"}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium capitalize">{item.type.replace("_", " ")}</div>
-                        <div className="text-sm text-[var(--text-muted)]">
-                          {new Date(item.created_at).toLocaleString()}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                {/* Features */}
+                <div className="p-8 bg-[var(--grey-100)] border border-[var(--grey-200)]">
+                  <h3 className="text-xs tracking-wider text-[var(--lime)] mb-6">ACTIVE FEATURES</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {features.map((feature) => (
+                      <div 
+                        key={feature.name}
+                        className={`p-5 border transition-all ${
+                          feature.active 
+                            ? 'border-[var(--lime)] bg-[rgba(200,255,0,0.05)]' 
+                            : 'border-[var(--grey-200)] opacity-40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm ${feature.active ? 'text-white' : 'text-[var(--grey-500)]'}`}>
+                            {feature.name}
+                          </span>
+                          <span className={`font-display text-xl ${feature.active ? 'text-[var(--lime)]' : 'text-[var(--grey-600)]'}`}>
+                            {feature.active ? `${feature.percent}%` : 'OFF'}
+                          </span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold">{Number(item.sol_amount || 0).toFixed(4)} SOL</div>
-                        {item.signature && (
-                          <a
-                            href={`https://solscan.io/tx/${item.signature}`}
-                            target="_blank"
-                            rel="noopener"
-                            className="text-xs text-[var(--accent)] hover:underline"
-                          >
-                            View tx
-                          </a>
-                        )}
+                    ))}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {token.description && (
+                  <div className="p-8 bg-[var(--grey-100)] border border-[var(--grey-200)]">
+                    <h3 className="text-xs tracking-wider text-[var(--lime)] mb-4">DESCRIPTION</h3>
+                    <p className="text-[var(--grey-400)] leading-relaxed">{token.description}</p>
+                  </div>
+                )}
+
+                {/* Platform Info */}
+                <div className="p-8 bg-[var(--grey-100)] border border-[var(--grey-200)]">
+                  <h3 className="text-xs tracking-wider text-[var(--lime)] mb-4">PLATFORM</h3>
+                  <div className="flex items-center gap-4">
+                    <span className="font-display text-2xl">{token.platform?.toUpperCase() || 'PUMP.FUN'}</span>
+                    <span className="text-xs tracking-wider px-3 py-1 bg-[var(--lime)] text-black">ACTIVE</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "history" && (
+              <div className="bg-[var(--grey-100)] border border-[var(--grey-200)]">
+                <div className="p-6 border-b border-[var(--grey-200)]">
+                  <h3 className="text-xs tracking-wider text-[var(--lime)]">ACTIVITY HISTORY</h3>
+                </div>
+                {history.length > 0 ? (
+                  <div>
+                    {history.map((item, i) => (
+                      <div 
+                        key={i} 
+                        className="flex items-center gap-4 p-6 border-b border-[var(--grey-200)] last:border-0 hover:bg-[var(--grey-200)] transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-[var(--grey-200)] flex items-center justify-center">
+                          <ActivityIcon type={item.type} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">{formatActivityType(item.type)}</div>
+                          <div className="text-xs tracking-wider text-[var(--grey-500)]">
+                            {new Date(item.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono text-[var(--lime)]">
+                            {item.type === "burn_tokens" 
+                              ? `${formatNumber(Number(item.token_amount || 0))} tokens`
+                              : `${Number(item.sol_amount || 0).toFixed(4)} SOL`
+                            }
+                          </div>
+                          {item.signature && (
+                            <a
+                              href={`https://solscan.io/tx/${item.signature}`}
+                              target="_blank"
+                              rel="noopener"
+                              className="text-xs tracking-wider text-[var(--grey-500)] hover:text-[var(--lime)] transition-colors"
+                            >
+                              VIEW TX
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10 text-[var(--text-muted)]">
-                  No activity yet
-                </div>
-              )}
-            </div>
-          )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20">
+                    <p className="text-[var(--grey-400)] mb-2">No activity yet</p>
+                    <p className="text-xs tracking-wider text-[var(--grey-600)]">Transactions will appear here</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="py-12 border-t border-[var(--grey-200)]">
+        <div className="container flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-[var(--lime)]" />
+            <span className="font-display text-xl tracking-tight">LAUNCHLABS</span>
+          </div>
+          <div className="flex items-center gap-8 text-xs tracking-wider text-[var(--grey-500)]">
+            <Link href="/docs" className="hover:text-[var(--lime)] transition-colors">DOCS</Link>
+            <span>© 2025</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function TokenImage({ token, size = "medium" }: { token: Token; size?: "medium" | "large" }) {
+function formatNumber(num: number): string {
+  if (num === 0) return "0";
+  if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(2)}B`;
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(2)}K`;
+  return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function formatActivityType(type: string): string {
+  const labels: Record<string, string> = {
+    claim_fees: "Fees Claimed",
+    buyback: "Buyback",
+    burn_tokens: "Tokens Burned",
+    add_liquidity: "Liquidity Added",
+    jackpot: "Jackpot Payout",
+    revshare: "Revenue Share",
+  };
+  return labels[type] || type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function ActivityIcon({ type }: { type: string }) {
+  const iconClass = "w-4 h-4 text-[var(--grey-400)]";
+  
+  switch (type) {
+    case "claim_fees":
+      return (
+        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case "buyback":
+      return (
+        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+        </svg>
+      );
+    case "burn_tokens":
+      return (
+        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+        </svg>
+      );
+    case "add_liquidity":
+      return (
+        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      );
+    default:
+      return (
+        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+  }
+}
+
+function TokenImage({ token }: { token: Token & { image_url?: string } }) {
   const [error, setError] = useState(false);
-  const sizeClasses = size === "large" ? "w-20 h-20 rounded-2xl text-2xl" : "w-12 h-12 rounded-xl text-lg";
 
   if (error || !token.image_url) {
     return (
-      <div className={`${sizeClasses} bg-gradient-to-br from-[var(--accent-subtle)] to-[var(--accent-secondary-glow)] flex items-center justify-center font-bold text-[var(--accent)]`}>
+      <div className="w-20 h-20 bg-[var(--lime)] flex items-center justify-center font-display text-3xl text-black">
         {token.symbol.slice(0, 2)}
       </div>
     );
@@ -262,7 +386,7 @@ function TokenImage({ token, size = "medium" }: { token: Token; size?: "medium" 
     <img
       src={token.image_url}
       alt={token.symbol}
-      className={`${sizeClasses} object-cover bg-[var(--bg-tertiary)]`}
+      className="w-20 h-20 object-cover bg-[var(--grey-200)]"
       onError={() => setError(true)}
     />
   );
@@ -270,28 +394,10 @@ function TokenImage({ token, size = "medium" }: { token: Token; size?: "medium" 
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "live") {
-    return <span className="badge badge-live">Live</span>;
+    return <span className="text-xs tracking-wider px-3 py-1 bg-[var(--lime)] text-black">GRADUATED</span>;
   }
   if (status === "bonding") {
-    return <span className="badge badge-bonding">Bonding</span>;
+    return <span className="text-xs tracking-wider px-3 py-1 bg-[var(--grey-300)] text-black">BONDING</span>;
   }
   return null;
-}
-
-function FeatureCard({ icon, name, active }: { icon: string; name: string; active: boolean }) {
-  return (
-    <div className={`flex items-center gap-3 p-4 rounded-xl border ${
-      active 
-        ? "bg-[var(--accent-subtle)] border-[var(--accent)]/30" 
-        : "bg-[var(--bg-tertiary)] border-[var(--border)]"
-    }`}>
-      <span className="text-xl">{icon}</span>
-      <span className={active ? "font-medium" : "text-[var(--text-muted)]"}>{name}</span>
-      {active ? (
-        <span className="ml-auto text-[var(--accent)] text-sm">Active</span>
-      ) : (
-        <span className="ml-auto text-[var(--text-muted)] text-sm">Disabled</span>
-      )}
-    </div>
-  );
 }

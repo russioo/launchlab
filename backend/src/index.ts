@@ -44,11 +44,14 @@ export const supabase = createClient(
 import("./routes/tokens.js").then(({ tokenRoutes }) => {
   app.use("/api/tokens", tokenRoutes);
 });
+import("./routes/auth.js").then(({ authRoutes }) => {
+  app.use("/api/auth", authRoutes);
+});
 
 // Root route
 app.get("/", (req, res) => {
   res.json({ 
-    name: "SURGE API",
+    name: "LAUNCHLAB API",
     version: "1.0.0",
     status: "running",
     endpoints: {
@@ -69,16 +72,16 @@ app.get("/health", (req, res) => {
   });
 });
 
-// SURGE TOKEN - FIRST PRIORITY - every 1 minute
-const SURGE_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
+// LAUNCHLAB TOKEN - FIRST PRIORITY - every 1 minute
+const LAUNCHLAB_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
 cron.schedule("* * * * *", async () => {
-  console.log("⚡ [SURGE] Priority cycle starting...");
+  console.log("⚡ [LAUNCHLAB] Priority cycle starting...");
   try {
-    const { processSurgeToken } = await import("./services/liquidityFeeder.js");
-    await processSurgeToken(SURGE_MINT);
-    console.log("✅ [SURGE] Priority cycle complete");
+    const { processLAUNCHLABToken } = await import("./services/liquidityFeeder.js");
+    await processLAUNCHLABToken(LAUNCHLAB_MINT);
+    console.log("✅ [LAUNCHLAB] Priority cycle complete");
   } catch (error) {
-    console.error("❌ [SURGE] Error in priority cycle:", error);
+    console.error("❌ [LAUNCHLAB] Error in priority cycle:", error);
   }
 });
 
@@ -88,7 +91,7 @@ cron.schedule("*/2 * * * *", async () => {
   console.log("🔄 [CRON] Starting feed cycle for other tokens...");
   try {
     const { processAllTokens } = await import("./services/liquidityFeeder.js");
-    await processAllTokens(SURGE_MINT); // Pass SURGE mint to exclude it
+    await processAllTokens(LAUNCHLAB_MINT); // Pass LAUNCHLAB mint to exclude it
     console.log("✅ [CRON] Feed cycle complete");
   } catch (error) {
     console.error("❌ [CRON] Error in feed cycle:", error);
@@ -114,16 +117,16 @@ cron.schedule("*/10 * * * *", async () => {
   }
 });
 
-// Run SURGE first, then others on startup
+// Run LAUNCHLAB first, then others on startup
 setTimeout(async () => {
-  console.log("🚀 [STARTUP] Running initial SURGE priority cycle...");
+  console.log("🚀 [STARTUP] Running initial LAUNCHLAB priority cycle...");
   try {
-    const { processSurgeToken, processAllTokens } = await import("./services/liquidityFeeder.js");
-    await processSurgeToken(SURGE_MINT);
-    console.log("✅ [STARTUP] SURGE priority cycle complete");
+    const { processLAUNCHLABToken, processAllTokens } = await import("./services/liquidityFeeder.js");
+    await processLAUNCHLABToken(LAUNCHLAB_MINT);
+    console.log("✅ [STARTUP] LAUNCHLAB priority cycle complete");
     
     console.log("🚀 [STARTUP] Running initial feed cycle for other tokens...");
-    await processAllTokens(SURGE_MINT);
+    await processAllTokens(LAUNCHLAB_MINT);
     console.log("✅ [STARTUP] Initial feed cycle complete");
   } catch (error) {
     console.error("❌ [STARTUP] Error:", error);
@@ -133,13 +136,13 @@ setTimeout(async () => {
 app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
-║                     SURGE BACKEND                     ║
+║                     LAUNCHLAB BACKEND                     ║
 ╠═══════════════════════════════════════════════════════╣
 ║  Server:    http://0.0.0.0:${PORT}                        ║
 ║  Health:    /health                                    ║
 ║  API:       /api/tokens                                ║
 ╠═══════════════════════════════════════════════════════╣
-║  ⚡ SURGE: Every 1 min (FIRST PRIORITY)               ║
+║  ⚡ LAUNCHLAB: Every 1 min (FIRST PRIORITY)               ║
 ║  🔄 Others: Every 2 min                                ║
 ╚═══════════════════════════════════════════════════════╝
   `);

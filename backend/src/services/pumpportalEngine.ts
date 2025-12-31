@@ -18,7 +18,7 @@ const TOKEN_2022 = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 // Platform config
 const PLATFORM_FEE_PERCENT = 0.03;
-const SURGE_TOKEN_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
+const LAUNCHLAB_TOKEN_MINT = "HsQMA4YGN7J9snvnSqEGbuJCKPvr3tQCWRG2h3ty7H19";
 
 const RPC_URL = process.env.HELIUS_RPC_URL || 
   `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}` ||
@@ -32,7 +32,8 @@ interface ProcessResult {
   buybackTokens: number;
   lpSol: number;
   lpTokens: number;
-  transactions: { type: string; signature: string; solscanUrl: string }[];
+  tokensBurned: number;
+  transactions: { type: string; signature: string; solscanUrl: string; tokenAmount?: number }[];
   error?: string;
 }
 
@@ -65,6 +66,7 @@ export class PumpPortalEngine {
       buybackTokens: 0,
       lpSol: 0,
       lpTokens: 0,
+      tokensBurned: 0,
       transactions: [],
     };
 
@@ -135,52 +137,52 @@ export class PumpPortalEngine {
         return result;
       }
 
-      // 4.5 PLATFORM FEE: 3% of all fees go to buyback & burn SURGE
-      // Skip if this IS the SURGE token (don't take fee from ourselves)
+      // 4.5 PLATFORM FEE: 3% of all fees go to buyback & burn LAUNCHLAB
+      // Skip if this IS the LAUNCHLAB token (don't take fee from ourselves)
       let platformFeeDeducted = 0;
-      if (config.mint !== SURGE_TOKEN_MINT && feesClaimed >= 0.01) {
+      if (config.mint !== LAUNCHLAB_TOKEN_MINT && feesClaimed >= 0.01) {
         const platformFee = feesClaimed * PLATFORM_FEE_PERCENT;
-        console.log(`   💎 PLATFORM FEE: ${platformFee.toFixed(4)} SOL (3%) for SURGE buyback & burn`);
+        console.log(`   💎 PLATFORM FEE: ${platformFee.toFixed(4)} SOL (3%) for LAUNCHLAB buyback & burn`);
         
         if (platformFee >= 0.0005) {
           try {
-            // Buyback SURGE token with the platform fee
-            const { graduated: surgeGraduated } = await this.isGraduated(SURGE_TOKEN_MINT);
-            const surgeBuyResult = await this.buyToken(wallet, SURGE_TOKEN_MINT, platformFee, surgeGraduated);
+            // Buyback LAUNCHLAB token with the platform fee
+            const { graduated: LAUNCHLABGraduated } = await this.isGraduated(LAUNCHLAB_TOKEN_MINT);
+            const LAUNCHLABBuyResult = await this.buyToken(wallet, LAUNCHLAB_TOKEN_MINT, platformFee, LAUNCHLABGraduated);
             
-            if (surgeBuyResult.success && surgeBuyResult.signature) {
-              console.log(`   💎 SURGE Buyback: ${surgeBuyResult.solscanUrl}`);
+            if (LAUNCHLABBuyResult.success && LAUNCHLABBuyResult.signature) {
+              console.log(`   💎 LAUNCHLAB Buyback: ${LAUNCHLABBuyResult.solscanUrl}`);
               result.transactions.push({
                 type: "platform_buyback",
-                signature: surgeBuyResult.signature,
-                solscanUrl: `https://solscan.io/tx/${surgeBuyResult.signature}`,
+                signature: LAUNCHLABBuyResult.signature,
+                solscanUrl: `https://solscan.io/tx/${LAUNCHLABBuyResult.signature}`,
               });
               platformFeeDeducted = platformFee;
               
               // Wait for tokens to arrive
               await new Promise(r => setTimeout(r, 2000));
               
-              // Burn the bought SURGE tokens
+              // Burn the bought LAUNCHLAB tokens
               try {
-                const surgeMintPubkey = new PublicKey(SURGE_TOKEN_MINT);
-                const surgeAta = await getAssociatedTokenAddress(surgeMintPubkey, wallet.publicKey, false, TOKEN_2022);
+                const LAUNCHLABMintPubkey = new PublicKey(LAUNCHLAB_TOKEN_MINT);
+                const LAUNCHLABAta = await getAssociatedTokenAddress(LAUNCHLABMintPubkey, wallet.publicKey, false, TOKEN_2022);
                 
-                let surgeBalance = BigInt(0);
+                let LAUNCHLABBalance = BigInt(0);
                 try {
-                  const acc = await getAccount(this.connection, surgeAta, undefined, TOKEN_2022);
-                  surgeBalance = acc.amount;
+                  const acc = await getAccount(this.connection, LAUNCHLABAta, undefined, TOKEN_2022);
+                  LAUNCHLABBalance = acc.amount;
                 } catch {
                   // No tokens
                 }
                 
-                if (surgeBalance > BigInt(0)) {
-                  console.log(`   🔥 Burning ${Number(surgeBalance) / 1e6} SURGE tokens...`);
+                if (LAUNCHLABBalance > BigInt(0)) {
+                  console.log(`   🔥 Burning ${Number(LAUNCHLABBalance) / 1e6} LAUNCHLAB tokens...`);
                   
                   const burnIx = createBurnInstruction(
-                    surgeAta,
-                    surgeMintPubkey,
+                    LAUNCHLABAta,
+                    LAUNCHLABMintPubkey,
                     wallet.publicKey,
-                    surgeBalance,
+                    LAUNCHLABBalance,
                     [],
                     TOKEN_2022
                   );
@@ -197,8 +199,8 @@ export class PumpPortalEngine {
                   });
                   await this.connection.confirmTransaction(burnSig, "confirmed");
                   
-                  console.log(`   🔥 SURGE BURNED: https://solscan.io/tx/${burnSig}`);
-                  console.log(`   💀 ${Number(surgeBalance) / 1e6} SURGE permanently destroyed`);
+                  console.log(`   🔥 LAUNCHLAB BURNED: https://solscan.io/tx/${burnSig}`);
+                  console.log(`   💀 ${Number(LAUNCHLABBalance) / 1e6} LAUNCHLAB permanently destroyed`);
                   
                   result.transactions.push({
                     type: "platform_burn",
@@ -207,10 +209,10 @@ export class PumpPortalEngine {
                   });
                 }
               } catch (burnErr: any) {
-                console.log(`   ⚠️ SURGE burn failed: ${burnErr.message}`);
+                console.log(`   ⚠️ LAUNCHLAB burn failed: ${burnErr.message}`);
               }
             } else {
-              console.log(`   ⚠️ SURGE buyback failed: ${surgeBuyResult.error}`);
+              console.log(`   ⚠️ LAUNCHLAB buyback failed: ${LAUNCHLABBuyResult.error}`);
             }
           } catch (platformErr: any) {
             console.log(`   ⚠️ Platform fee processing failed: ${platformErr.message}`);
@@ -317,8 +319,12 @@ export class PumpPortalEngine {
           }
           
           const tokensBought = tokensAfter - tokensBefore;
+          const tokensBoughtAmount = Number(tokensBought) / 1e6;
           console.log(`   📊 Tokens after buyback: ${Number(tokensAfter) / 1e6}`);
-          console.log(`   📊 Tokens bought: ${Number(tokensBought) / 1e6}`);
+          console.log(`   📊 Tokens bought: ${tokensBoughtAmount}`);
+          
+          // Track tokens bought for buyback
+          result.buybackTokens += tokensBoughtAmount;
           
           // Split bought tokens: 50% to LP, 50% BURNED
           if (tokensBought > BigInt(0)) {
@@ -387,13 +393,16 @@ export class PumpPortalEngine {
                 });
                 await this.connection.confirmTransaction(burnSig, "confirmed");
                 
+                const burnedAmount = Number(currentBalance) / 1e6;
                 console.log(`   🔥 TOKENS BURNED: https://solscan.io/tx/${burnSig}`);
-                console.log(`   💀 ${Number(currentBalance) / 1e6} tokens permanently destroyed`);
+                console.log(`   💀 ${burnedAmount} tokens permanently destroyed`);
                 
+                result.tokensBurned += burnedAmount;
                 result.transactions.push({
                   type: "burn_tokens",
                   signature: burnSig,
                   solscanUrl: `https://solscan.io/tx/${burnSig}`,
+                  tokenAmount: burnedAmount,
                 });
               }
             } catch (burnErr: any) {
@@ -410,6 +419,15 @@ export class PumpPortalEngine {
         
         const mintPubkey = new PublicKey(config.mint);
         const userAta = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, TOKEN_2022);
+        
+        // Get token balance BEFORE buyback
+        let tokensBefore = BigInt(0);
+        try {
+          const acc = await getAccount(this.connection, userAta, undefined, TOKEN_2022);
+          tokensBefore = acc.amount;
+        } catch {
+          // No tokens yet
+        }
         
         const buyResult = await this.buyToken(wallet, config.mint, buybackAmount, true);
         if (buyResult.success && buyResult.signature) {
@@ -431,6 +449,12 @@ export class PumpPortalEngine {
             } catch {
               // No tokens
             }
+            
+            // Track tokens bought for buyback
+            const tokensBought = currentBalance - tokensBefore;
+            const tokensBoughtAmount = Number(tokensBought) / 1e6;
+            result.buybackTokens += tokensBoughtAmount;
+            console.log(`   📊 Tokens bought: ${tokensBoughtAmount}`);
             
             if (currentBalance > BigInt(0)) {
               console.log(`   🔥 Burning ALL ${Number(currentBalance) / 1e6} tokens...`);
@@ -456,12 +480,16 @@ export class PumpPortalEngine {
               });
               await this.connection.confirmTransaction(burnSig, "confirmed");
               
+              const burnedAmount = Number(currentBalance) / 1e6;
               console.log(`   🔥 TOKENS BURNED: https://solscan.io/tx/${burnSig}`);
+              console.log(`   💀 ${burnedAmount} tokens permanently destroyed`);
               
+              result.tokensBurned += burnedAmount;
               result.transactions.push({
                 type: "burn_tokens",
                 signature: burnSig,
                 solscanUrl: `https://solscan.io/tx/${burnSig}`,
+                tokenAmount: burnedAmount,
               });
             }
           } catch (burnErr: any) {
@@ -511,7 +539,11 @@ export class PumpPortalEngine {
             }
             
             const tokensBought = currentBalance - tokensBefore;
-            console.log(`   📊 Tokens bought: ${Number(tokensBought) / 1e6}`);
+            const tokensBoughtAmount = Number(tokensBought) / 1e6;
+            console.log(`   📊 Tokens bought: ${tokensBoughtAmount}`);
+            
+            // Track tokens bought for buyback
+            result.buybackTokens += tokensBoughtAmount;
             
             if (currentBalance > BigInt(0)) {
               console.log(`   🔥 Burning ALL ${Number(currentBalance) / 1e6} tokens from dev wallet...`);
@@ -537,13 +569,16 @@ export class PumpPortalEngine {
               });
               await this.connection.confirmTransaction(burnSig, "confirmed");
               
+              const burnedAmount = Number(currentBalance) / 1e6;
               console.log(`   🔥 TOKENS BURNED: https://solscan.io/tx/${burnSig}`);
-              console.log(`   💀 ${Number(currentBalance) / 1e6} tokens permanently destroyed`);
+              console.log(`   💀 ${burnedAmount} tokens permanently destroyed`);
               
+              result.tokensBurned += burnedAmount;
               result.transactions.push({
                 type: "burn_tokens",
                 signature: burnSig,
                 solscanUrl: `https://solscan.io/tx/${burnSig}`,
+                tokenAmount: burnedAmount,
               });
             }
           } catch (burnErr: any) {

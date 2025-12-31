@@ -1,11 +1,20 @@
 import { Router, Request, Response } from "express";
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
+import multer from "multer";
 import { supabase } from "../index.js";
-import { getTokenInfo } from "../services/pumpfun.js";
+import { getTokenInfo, createToken as pumpfunCreateToken, uploadMetadata as pumpfunUploadMetadata } from "../services/pumpfun.js";
+import * as bagsService from "../services/bags.js";
+import * as bonkService from "../services/bonk.js";
 import { createTokenWithOfficialSdk } from "../services/tokenCreatorSdk.js";
 
 export const tokenRoutes = Router();
+
+// Multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
 
 const RPC_URL = process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 const connection = new Connection(RPC_URL, "confirmed");
@@ -28,12 +37,10 @@ tokenRoutes.get("/", async (req: Request, res: Response) => {
         image_url,
         creator_wallet,
         status,
-        twitter,
-        telegram,
-        website,
         total_fees_claimed,
         total_buyback,
         total_lp_added,
+        total_burned,
         created_at,
         graduated_at,
         last_feed_at
@@ -68,6 +75,66 @@ tokenRoutes.get("/", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching tokens:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/tokens/user/:userId - Get tokens for a specific user
+ * NOTE: Must be before /:id route to not be captured
+ */
+tokenRoutes.get("/user/:userId", async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    // First get user's wallet
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("wallet_public_key")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get tokens created by this user's wallet
+    const { data: tokens, error } = await supabase
+      .from("tokens")
+      .select(`
+        id,
+        mint,
+        name,
+        symbol,
+        platform,
+        status,
+        image_url,
+        total_fees_claimed,
+        total_buyback,
+        total_burned,
+        total_lp_added,
+        feature_buyback_enabled,
+        feature_buyback_percent,
+        feature_autoliq_enabled,
+        feature_autoliq_percent,
+        feature_revshare_enabled,
+        feature_revshare_percent,
+        feature_jackpot_enabled,
+        feature_jackpot_percent,
+        created_at
+      `)
+      .eq("creator_wallet", user.wallet_public_key)
+      .neq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching user tokens:", error);
+      return res.status(500).json({ error: "Failed to fetch tokens" });
+    }
+
+    res.json({ tokens: tokens || [] });
+  } catch (error) {
+    console.error("Error fetching user tokens:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -210,7 +277,31 @@ tokenRoutes.get("/:id", async (req: Request, res: Response) => {
     let query = supabase
       .from("tokens")
       .select(`
-        *,
+        id,
+        mint,
+        name,
+        symbol,
+        description,
+        image_url,
+        creator_wallet,
+        status,
+        platform,
+        pumpfun_bonding_curve,
+        total_fees_claimed,
+        total_buyback,
+        total_lp_added,
+        total_burned,
+        created_at,
+        graduated_at,
+        last_feed_at,
+        feature_buyback_enabled,
+        feature_buyback_percent,
+        feature_autoliq_enabled,
+        feature_autoliq_percent,
+        feature_revshare_enabled,
+        feature_revshare_percent,
+        feature_jackpot_enabled,
+        feature_jackpot_percent,
         feed_history (
           id,
           type,
@@ -231,21 +322,18 @@ tokenRoutes.get("/:id", async (req: Request, res: Response) => {
     const { data, error } = await query.single();
 
     if (error || !data) {
-      console.log(`Token not found: ${id} (isUUID: ${isUUID})`);
+      console.log(`Token not found: ${id} (isUUID: ${isUUID})`, error);
       return res.status(404).json({ error: "Token not found" });
     }
 
-    // Remove sensitive data
-    const { bot_wallet_private, ...tokenData } = data;
-    
     // Filter out internal transfers from feed_history
-    if (tokenData.feed_history) {
-      tokenData.feed_history = tokenData.feed_history.filter(
+    if (data.feed_history) {
+      data.feed_history = data.feed_history.filter(
         (h: { type: string }) => h.type !== "fee_transfer"
       );
     }
 
-    res.json(tokenData);
+    res.json(data);
   } catch (error) {
     console.error("Error fetching token:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -373,6 +461,207 @@ tokenRoutes.post("/import", async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Error importing token:", error);
     res.status(500).json({ error: error.message || "Internal server error" });
+  }
+});
+
+/**
+ * POST /api/tokens/deploy - Deploy a new token (supports all platforms)
+ * Uses multipart form data for image upload
+ */
+tokenRoutes.post("/deploy", upload.single("image"), async (req: Request, res: Response) => {
+  try {
+    const { userId, platform, name, symbol, description, initialBuy, features } = req.body;
+    const imageFile = req.file;
+
+    // Validate required fields
+    if (!userId || !platform || !name || !symbol) {
+      return res.status(400).json({ 
+        error: "Missing required fields: userId, platform, name, symbol" 
+      });
+    }
+
+    console.log(`[Deploy] Creating ${platform} token: ${name} (${symbol})`);
+    console.log(`[Deploy] User: ${userId}`);
+    console.log(`[Deploy] Image: ${imageFile ? `${imageFile.size} bytes` : 'none'}`);
+
+    // Get user from database
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id, wallet_public_key, wallet_private_key")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !user) {
+      console.error("[Deploy] User not found:", userError);
+      return res.status(404).json({ error: "User not found. Please login again." });
+    }
+
+    // Load user's wallet for automation
+    let creatorWallet: Keypair;
+    try {
+      creatorWallet = Keypair.fromSecretKey(bs58.decode(user.wallet_private_key));
+      console.log(`[Deploy] Using wallet: ${creatorWallet.publicKey.toBase58()}`);
+    } catch (e) {
+      return res.status(500).json({ error: "Invalid wallet configuration" });
+    }
+
+    // Check wallet balance
+    const balance = await connection.getBalance(creatorWallet.publicKey);
+    const balanceSol = balance / LAMPORTS_PER_SOL;
+    console.log(`[Deploy] Wallet balance: ${balanceSol.toFixed(4)} SOL`);
+
+    if (balanceSol < 0.05) {
+      return res.status(400).json({ 
+        error: `Insufficient balance. Your wallet has ${balanceSol.toFixed(4)} SOL. Minimum 0.05 SOL required. Fund your wallet at: ${creatorWallet.publicKey.toBase58()}`
+      });
+    }
+
+    // Parse features
+    let parsedFeatures: Array<{ id: string; percent: number }> = [];
+    try {
+      parsedFeatures = features ? JSON.parse(features) : [];
+    } catch (e) {
+      console.warn("[Deploy] Could not parse features:", features);
+    }
+
+    // Build feature flags for database
+    const featureFlags = {
+      feature_buyback_enabled: parsedFeatures.some(f => f.id === "buyback_burn"),
+      feature_buyback_percent: parsedFeatures.find(f => f.id === "buyback_burn")?.percent || 0,
+      feature_autoliq_enabled: parsedFeatures.some(f => f.id === "auto_liquidity"),
+      feature_autoliq_percent: parsedFeatures.find(f => f.id === "auto_liquidity")?.percent || 0,
+      feature_revshare_enabled: parsedFeatures.some(f => f.id === "revenue_share"),
+      feature_revshare_percent: parsedFeatures.find(f => f.id === "revenue_share")?.percent || 0,
+      feature_jackpot_enabled: parsedFeatures.some(f => f.id === "jackpot"),
+      feature_jackpot_percent: parsedFeatures.find(f => f.id === "jackpot")?.percent || 0,
+    };
+
+    console.log("[Deploy] Features:", featureFlags);
+
+    let result: any;
+    const initialBuySol = parseFloat(initialBuy) || 0.01;
+
+    // Create token based on platform
+    if (platform === "pumpfun") {
+      console.log("[Deploy] Creating Pump.fun token...");
+      
+      // First upload metadata to IPFS
+      let metadataUri = "";
+      let imageUrl = "";
+      
+      if (imageFile?.buffer) {
+        console.log("[Deploy] Uploading metadata to IPFS...");
+        const uploadResult = await pumpfunUploadMetadata(
+          imageFile.buffer,
+          { name, symbol, description: description || "" }
+        );
+        if ('metadataUri' in uploadResult) {
+          metadataUri = uploadResult.metadataUri;
+          imageUrl = uploadResult.imageUri || "";
+          console.log("[Deploy] Metadata uploaded:", metadataUri);
+        } else if ('error' in uploadResult) {
+          console.error("[Deploy] Metadata upload failed:", uploadResult.error);
+          return res.status(500).json({ error: `Metadata upload failed: ${uploadResult.error}` });
+        }
+      }
+      
+      // Create token on Pumpfun
+      result = await pumpfunCreateToken(
+        connection,
+        creatorWallet,
+        creatorWallet, // Use same wallet for LP
+        metadataUri,
+        { name, symbol, description: description || "" },
+        initialBuySol
+      );
+      
+      // Add image URL to result
+      if (result.success && imageUrl) {
+        result.imageUrl = imageUrl;
+      }
+    } else if (platform === "bags") {
+      console.log("[Deploy] Creating Bags.fm token...");
+      result = await bagsService.createToken({
+        name,
+        symbol,
+        description: description || "",
+        image: imageFile?.buffer || Buffer.from([]),
+        creatorKeypair: creatorWallet,
+        initialBuySol,
+      });
+    } else if (platform === "bonk") {
+      console.log("[Deploy] Creating Bonk.fun token...");
+      result = await bonkService.createToken({
+        name,
+        symbol,
+        description: description || "",
+        image: imageFile?.buffer || Buffer.from([]),
+        creatorKeypair: creatorWallet,
+        initialBuySol,
+      });
+    } else {
+      return res.status(400).json({ error: `Platform "${platform}" not supported` });
+    }
+
+    if (!result.success) {
+      console.error("[Deploy] Token creation failed:", result.error);
+      return res.status(500).json({ error: result.error || "Token creation failed" });
+    }
+
+    console.log(`[Deploy] Token created! Mint: ${result.mint}`);
+
+    // Store token in database
+    const { data: tokenData, error: insertError } = await supabase
+      .from("tokens")
+      .insert({
+        mint: result.mint,
+        name,
+        symbol,
+        description: description || "",
+        image_url: result.imageUrl || null,
+        creator_wallet: user.wallet_public_key,
+        bot_wallet_public: creatorWallet.publicKey.toBase58(),
+        bot_wallet_private: user.wallet_private_key,
+        status: "bonding",
+        platform,
+        pumpfun_bonding_curve: result.bondingCurve || result.poolAddress || null,
+        pumpfun_associated_bonding_curve: result.associatedBondingCurve || null,
+        ...featureFlags,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("[Deploy] Database insert error:", insertError);
+      // Token was created on-chain, return success with warning
+      return res.json({
+        success: true,
+        mint: result.mint,
+        tokenId: null,
+        warning: "Token created but database record failed. Contact support.",
+      });
+    }
+
+    console.log(`[Deploy] Token saved to database: ${tokenData.id}`);
+
+    // Record creation in feed_history
+    await supabase.from("feed_history").insert({
+      token_id: tokenData.id,
+      type: "create",
+      signature: result.signature || "deploy",
+      sol_amount: initialBuySol,
+      token_amount: 0,
+    });
+
+    res.json({
+      success: true,
+      tokenId: tokenData.id,
+      mint: result.mint,
+      signature: result.signature,
+    });
+  } catch (error: any) {
+    console.error("[Deploy] Error:", error);
+    res.status(500).json({ error: error.message || "Token deployment failed" });
   }
 });
 

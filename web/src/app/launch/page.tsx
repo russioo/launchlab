@@ -1,598 +1,340 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
+import { useAuth } from "@/components/AuthContext";
+import { deployToken } from "@/lib/auth";
 import { motion } from "framer-motion";
 
-// Available platforms
 const platforms = [
-  { 
-    id: "pumpfun", 
-    name: "Pump.fun", 
-    description: "The original memecoin launchpad",
-    status: "live"
-  },
-  { 
-    id: "moonshot", 
-    name: "Moonshot", 
-    description: "Dexscreener's launchpad",
-    status: "coming"
-  },
-  { 
-    id: "believe", 
-    name: "Believe", 
-    description: "Community-first launches",
-    status: "coming"
-  },
-  { 
-    id: "raydium", 
-    name: "Raydium", 
-    description: "LaunchLab by Raydium",
-    status: "coming"
-  },
+  { id: "pumpfun", name: "PUMP.FUN", desc: "Original memecoin launchpad", status: "live" },
+  { id: "bags", name: "BAGS.FM", desc: "Token-2022 with creator fees", status: "live" },
+  { id: "bonk", name: "BONK.FUN", desc: "Raydium LaunchLab powered", status: "live" },
+  { id: "moonshot", name: "MOONSHOT", desc: "Dexscreener's launchpad", status: "coming" },
 ];
 
-// Available features
-const availableFeatures = [
-  {
-    id: "buyback_burn",
-    name: "Buyback & Burn",
-    description: "Automatically buy tokens back from the market and burn them. Creates deflationary pressure.",
-    recommended: true,
-  },
-  {
-    id: "auto_liquidity",
-    name: "Auto-Liquidity",
-    description: "Claim creator fees and automatically add them to liquidity pools. Growing LP forever.",
-    recommended: true,
-  },
-  {
-    id: "jackpot",
-    name: "Jackpot Rewards",
-    description: "Random holders win SOL rewards from a portion of trading fees.",
-    recommended: false,
-  },
-  {
-    id: "revenue_share",
-    name: "Revenue Share",
-    description: "Distribute a percentage of fees proportionally to all token holders.",
-    recommended: false,
-  },
-];
+const featureDefinitions = {
+  buyback_burn: { id: "buyback_burn", name: "Buyback & Burn", desc: "Auto buy + burn tokens", platforms: ["pumpfun", "bags", "bonk"] },
+  auto_liquidity: { id: "auto_liquidity", name: "Auto-Liquidity", desc: "Fees → LP depth", platforms: ["pumpfun"] },
+  jackpot: { id: "jackpot", name: "Jackpot", desc: "Random holder rewards", platforms: ["pumpfun", "bags", "bonk"], group: "rewards" },
+  revenue_share: { id: "revenue_share", name: "Revenue Share", desc: "Distribute to holders", platforms: ["pumpfun", "bags", "bonk"], group: "rewards" },
+};
 
+type FeatureId = keyof typeof featureDefinitions;
 type Step = "platform" | "features" | "details" | "review";
 
-const fadeUpVariant = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
-  }
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
-};
-
 export default function LaunchPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [step, setStep] = useState<Step>("platform");
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(["buyback_burn", "auto_liquidity"]);
-  const [tokenDetails, setTokenDetails] = useState({
-    name: "",
-    symbol: "",
-    description: "",
-    image: null as File | null,
+  const [features, setFeatures] = useState<Record<FeatureId, { enabled: boolean; percent: number }>>({
+    buyback_burn: { enabled: true, percent: 50 },
+    auto_liquidity: { enabled: false, percent: 0 },
+    jackpot: { enabled: false, percent: 0 },
+    revenue_share: { enabled: false, percent: 0 },
   });
+  const [tokenDetails, setTokenDetails] = useState({
+    name: "", symbol: "", description: "", image: null as File | null, imagePreview: null as string | null, initialBuy: 0.01,
+  });
+  const [deploying, setDeploying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const steps: { id: Step; label: string }[] = [
-    { id: "platform", label: "Platform" },
-    { id: "features", label: "Features" },
-    { id: "details", label: "Details" },
-    { id: "review", label: "Review" },
+    { id: "platform", label: "01 Platform" },
+    { id: "features", label: "02 Features" },
+    { id: "details", label: "03 Details" },
+    { id: "review", label: "04 Review" },
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === step);
+  const isFeatureAvailable = (id: FeatureId) => selectedPlatform ? featureDefinitions[id].platforms.includes(selectedPlatform) : false;
+  const totalPercent = Object.values(features).reduce((s, f) => s + (f.enabled ? f.percent : 0), 0);
 
-  const toggleFeature = (featureId: string) => {
-    setSelectedFeatures(prev => 
-      prev.includes(featureId)
-        ? prev.filter(f => f !== featureId)
-        : [...prev, featureId]
-    );
+  const toggleFeature = (id: FeatureId) => {
+    if (!isFeatureAvailable(id)) return;
+    const feat = featureDefinitions[id];
+    setFeatures(prev => {
+      const newF = { ...prev };
+      if (!prev[id].enabled && feat.group === "rewards") {
+        Object.keys(featureDefinitions).forEach(k => {
+          if (featureDefinitions[k as FeatureId].group === "rewards" && k !== id) {
+            newF[k as FeatureId] = { ...newF[k as FeatureId], enabled: false, percent: 0 };
+          }
+        });
+      }
+      newF[id] = { ...newF[id], enabled: !prev[id].enabled, percent: !prev[id].enabled ? 25 : 0 };
+      return newF;
+    });
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setTokenDetails(prev => ({ ...prev, image: file }));
+      const reader = new FileReader();
+      reader.onload = (e) => setTokenDetails(prev => ({ ...prev, imagePreview: e.target?.result as string }));
+      reader.readAsDataURL(file);
+    }
   };
 
   const canProceed = () => {
-    switch (step) {
-      case "platform":
-        return selectedPlatform !== null;
-      case "features":
-        return selectedFeatures.length > 0;
-      case "details":
-        return tokenDetails.name && tokenDetails.symbol;
-      default:
-        return true;
-    }
+    if (step === "platform") return !!selectedPlatform;
+    if (step === "features") return Object.values(features).some(f => f.enabled) && totalPercent <= 100;
+    if (step === "details") return tokenDetails.name && tokenDetails.symbol && tokenDetails.image;
+    return true;
   };
 
-  const nextStep = () => {
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex < steps.length) {
-      setStep(steps[nextIndex].id);
-    }
-  };
+  const nextStep = () => currentStepIndex + 1 < steps.length && setStep(steps[currentStepIndex + 1].id);
+  const prevStep = () => currentStepIndex > 0 && setStep(steps[currentStepIndex - 1].id);
 
-  const prevStep = () => {
-    const prevIndex = currentStepIndex - 1;
-    if (prevIndex >= 0) {
-      setStep(steps[prevIndex].id);
+  const handleDeploy = async () => {
+    if (!user) { router.push("/login"); return; }
+    setDeploying(true);
+    setError(null);
+    try {
+      const enabledFeatures = Object.entries(features).filter(([_, c]) => c.enabled).map(([id]) => id);
+      const result = await deployToken({
+        userId: user.id, platform: selectedPlatform!, name: tokenDetails.name, symbol: tokenDetails.symbol,
+        description: tokenDetails.description, initialBuy: tokenDetails.initialBuy, features: enabledFeatures, image: tokenDetails.image || undefined,
+      });
+      router.push(`/token/${result.mint || result.tokenId}`);
+    } catch (err: any) {
+      setError(err.message || "Failed to deploy");
+    } finally {
+      setDeploying(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-cream)] relative overflow-x-hidden">
-      {/* Floating accent orbs */}
-      <div 
-        className="fixed w-[600px] h-[600px] rounded-full pointer-events-none opacity-15"
-        style={{ 
-          background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
-          top: '5%', 
-          right: '-15%',
-          filter: 'blur(80px)',
-        }}
-      />
-      <div 
-        className="fixed w-[400px] h-[400px] rounded-full pointer-events-none opacity-10"
-        style={{ 
-          background: 'radial-gradient(circle, var(--teal) 0%, transparent 70%)',
-          bottom: '10%', 
-          left: '-10%',
-          filter: 'blur(60px)',
-        }}
-      />
-      
+    <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="relative z-10 pt-32 pb-20">
-        <div className="max-w-4xl mx-auto px-6">
+      <main className="pt-32 pb-20">
+        <div className="container max-w-4xl">
           {/* Header */}
-          <motion.div 
-            className="mb-12"
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-          >
-            <motion.div variants={fadeUpVariant} className="flex items-center gap-4 mb-6">
-              <motion.div 
-                className="w-8 h-[2px] bg-[var(--accent)]"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              />
-              <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                Token Creator
-              </span>
-            </motion.div>
-            
-            <motion.h1 variants={fadeUpVariant} className="heading-lg mb-4">
-              Launch your
-              <br />
-              <span className="text-italic">token</span>
-              <span className="text-[var(--accent)]">.</span>
-            </motion.h1>
-            
-            <motion.p variants={fadeUpVariant} className="text-body max-w-lg">
-              Configure and deploy your token in minutes with built-in automation.
-            </motion.p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
+            <span className="text-small text-[var(--lime)] mb-4 block">Token Creator</span>
+            <h1 className="heading-xl">LAUNCH<br /><span className="text-[var(--grey-400)]">TOKEN</span></h1>
           </motion.div>
 
-          {/* Step Indicator - Minimal editorial style */}
-          <motion.div 
-            className="mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="flex items-center gap-1">
-              {steps.map((s, i) => (
-                <button
-                  key={s.id}
-                  onClick={() => i <= currentStepIndex && setStep(s.id)}
-                  disabled={i > currentStepIndex}
-                  className={`group relative transition-all duration-300 ${
-                    i > currentStepIndex ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
-                >
-                  <div className={`px-5 py-3 transition-all duration-300 ${
-                    s.id === step 
-                      ? 'text-[var(--ink)]' 
-                      : i < currentStepIndex 
-                      ? 'text-[var(--accent)]'
-                      : 'text-[var(--ink-faded)]'
-                  }`}>
-                    <span className="font-serif text-2xl md:text-3xl">{s.label}</span>
-                  </div>
-                  {/* Active underline */}
-                  <div className={`absolute bottom-0 left-5 right-5 h-[2px] transition-all duration-300 ${
-                    s.id === step 
-                      ? 'bg-[var(--accent)]' 
-                      : i < currentStepIndex 
-                      ? 'bg-[var(--accent)]/30'
-                      : 'bg-transparent'
-                  }`} />
-                </button>
-              ))}
-            </div>
+          {/* Step Tabs */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="flex gap-2 mb-8 overflow-x-auto pb-2">
+            {steps.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => i <= currentStepIndex && setStep(s.id)}
+                disabled={i > currentStepIndex}
+                className={`px-6 py-4 text-small whitespace-nowrap transition-all ${
+                  s.id === step ? 'bg-[var(--lime)] text-black' : i < currentStepIndex ? 'bg-[var(--grey-200)] text-white' : 'bg-[var(--grey-100)] text-[var(--grey-500)]'
+                } ${i > currentStepIndex ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--grey-200)]'}`}
+              >
+                {s.label}
+              </button>
+            ))}
           </motion.div>
 
-          {/* Step Content Card */}
-          <motion.div 
-            className="rounded-[1.5rem] bg-[var(--bg-warm)]/80 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_40px_-15px_rgba(0,0,0,0.1)] ring-1 ring-white/60"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+          {/* Content Card */}
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-[var(--grey-100)] border border-[var(--grey-200)] p-8 md:p-10"
           >
-            <div className="p-8 md:p-10">
-              {/* Platform Selection */}
-              {step === "platform" && (
-                <motion.div
-                  key="platform"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className="font-serif text-[var(--ink-faded)] text-sm">01</span>
-                    <div className="w-6 h-px bg-[var(--ink)]/20" />
-                  </div>
-                  <h2 className="font-serif text-2xl mb-2">Select Launchpad</h2>
-                  <p className="text-[var(--ink-muted)] mb-8">
-                    Choose which platform to deploy your token on.
-                  </p>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {platforms.map((platform, i) => (
-                      <motion.button
-                        key={platform.id}
-                        onClick={() => platform.status === "live" && setSelectedPlatform(platform.id)}
-                        disabled={platform.status !== "live"}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className={`text-left p-5 rounded-xl border-2 transition-all ${
-                          selectedPlatform === platform.id 
-                            ? 'border-[var(--accent)] bg-white/80 shadow-lg' 
-                            : 'border-[var(--ink)]/10 bg-white/40 hover:border-[var(--ink)]/20 hover:bg-white/60'
-                        } ${platform.status !== "live" ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-serif text-xl">{platform.name}</span>
-                          {selectedPlatform === platform.id && (
-                            <span className="text-[var(--accent)] font-serif text-sm italic">Selected</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-[var(--ink-muted)] mb-4">
-                          {platform.description}
-                        </p>
-                        {platform.status === "coming" ? (
-                          <span className="text-xs text-[var(--ink-faded)] italic">Coming soon</span>
-                        ) : (
-                          <span className="text-xs text-[var(--accent)] italic">Ready to use</span>
-                        )}
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Feature Selection */}
-              {step === "features" && (
-                <motion.div
-                  key="features"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className="font-serif text-[var(--ink-faded)] text-sm">02</span>
-                    <div className="w-6 h-px bg-[var(--ink)]/20" />
-                  </div>
-                  <h2 className="font-serif text-2xl mb-2">Configure Features</h2>
-                  <p className="text-[var(--ink-muted)] mb-8">
-                    Enable the tokenomics features you want.
-                  </p>
-
-                  <div className="space-y-3">
-                    {availableFeatures.map((feature, i) => (
-                      <motion.button
-                        key={feature.id}
-                        onClick={() => toggleFeature(feature.id)}
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08 }}
-                        className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
-                          selectedFeatures.includes(feature.id) 
-                            ? 'border-[var(--accent)] bg-white/80 shadow-lg' 
-                            : 'border-[var(--ink)]/10 bg-white/40 hover:border-[var(--ink)]/20 hover:bg-white/60'
-                        }`}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className={`w-5 h-5 border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${
-                            selectedFeatures.includes(feature.id)
-                              ? 'border-[var(--accent)] bg-transparent'
-                              : 'border-[var(--ink)]/15 bg-transparent'
-                          }`}>
-                            {selectedFeatures.includes(feature.id) && (
-                              <div className="w-2 h-2 bg-[var(--accent)]" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="font-serif text-lg">{feature.name}</span>
-                              {feature.recommended && (
-                                <span className="text-xs text-[var(--accent)] italic">recommended</span>
-                              )}
-                            </div>
-                            <p className="text-sm text-[var(--ink-muted)]">
-                              {feature.description}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Token Details */}
-              {step === "details" && (
-                <motion.div
-                  key="details"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className="font-serif text-[var(--ink-faded)] text-sm">03</span>
-                    <div className="w-6 h-px bg-[var(--ink)]/20" />
-                  </div>
-                  <h2 className="font-serif text-2xl mb-2">Token Details</h2>
-                  <p className="text-[var(--ink-muted)] mb-8">
-                    Enter the basic information for your token.
-                  </p>
-
-                  <div className="space-y-6">
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
+            {/* Platform Step */}
+            {step === "platform" && (
+              <div>
+                <h2 className="heading-md mb-2">Select Platform</h2>
+                <p className="text-body mb-8">Choose your launchpad</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {platforms.map((p, i) => (
+                    <motion.button
+                      key={p.id}
+                      onClick={() => p.status === "live" && setSelectedPlatform(p.id)}
+                      disabled={p.status !== "live"}
+                      initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`text-left p-6 border-2 transition-all ${
+                        selectedPlatform === p.id ? 'border-[var(--lime)] bg-[var(--lime-soft)]' : 'border-[var(--grey-200)] hover:border-[var(--grey-400)]'
+                      } ${p.status !== "live" ? 'opacity-40 cursor-not-allowed' : ''}`}
                     >
-                      <label className="block text-sm font-medium mb-2 text-[var(--ink)]">Token Name</label>
-                      <input
-                        type="text"
-                        value={tokenDetails.name}
-                        onChange={(e) => setTokenDetails(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="e.g. Doge Coin"
-                        className="w-full px-5 py-4 bg-white/60 border border-[var(--ink)]/10 rounded-xl text-[var(--ink)] placeholder:text-[var(--ink-faded)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
-                      />
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 }}
-                    >
-                      <label className="block text-sm font-medium mb-2 text-[var(--ink)]">Symbol</label>
-                      <input
-                        type="text"
-                        value={tokenDetails.symbol}
-                        onChange={(e) => setTokenDetails(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-                        placeholder="e.g. DOGE"
-                        maxLength={10}
-                        className="w-full px-5 py-4 bg-white/60 border border-[var(--ink)]/10 rounded-xl text-[var(--ink)] placeholder:text-[var(--ink-faded)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 transition-all"
-                      />
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <label className="block text-sm font-medium mb-2 text-[var(--ink)]">
-                        Description <span className="text-[var(--ink-faded)] font-normal">(optional)</span>
-                      </label>
-                      <textarea
-                        value={tokenDetails.description}
-                        onChange={(e) => setTokenDetails(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Describe your token..."
-                        rows={3}
-                        className="w-full px-5 py-4 bg-white/60 border border-[var(--ink)]/10 rounded-xl text-[var(--ink)] placeholder:text-[var(--ink-faded)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 transition-all resize-none"
-                      />
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 }}
-                    >
-                      <label className="block text-sm font-medium mb-2 text-[var(--ink)]">Token Image</label>
-                      <div className="border-2 border-dashed border-[var(--ink)]/10 rounded-xl p-8 text-center hover:border-[var(--accent)] transition-colors cursor-pointer bg-white/40">
-                        <div className="w-14 h-14 rounded-xl bg-[var(--bg-soft)] mx-auto mb-4 flex items-center justify-center">
-                          <svg className="w-7 h-7 text-[var(--ink-faded)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <p className="text-[var(--ink-soft)]">Click to upload</p>
-                        <p className="text-xs text-[var(--ink-faded)] mt-1">PNG, JPG up to 5MB</p>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-display text-2xl">{p.name}</span>
+                        {selectedPlatform === p.id && <span className="badge badge-live">Selected</span>}
                       </div>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Review */}
-              {step === "review" && (
-                <motion.div
-                  key="review"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className="font-serif text-[var(--ink-faded)] text-sm">04</span>
-                    <div className="w-6 h-px bg-[var(--ink)]/20" />
-                  </div>
-                  <h2 className="font-serif text-2xl mb-2">Review & Deploy</h2>
-                  <p className="text-[var(--ink-muted)] mb-8">
-                    Confirm your configuration before launching.
-                  </p>
-
-                  <div className="space-y-4">
-                    {/* Platform */}
-                    <motion.div 
-                      className="p-5 bg-white/60 rounded-xl border border-[var(--ink)]/5"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                    >
-                      <div className="text-xs text-[var(--ink-faded)] uppercase tracking-wider mb-2">Platform</div>
-                      <div className="font-serif text-xl">
-                        {platforms.find(p => p.id === selectedPlatform)?.name}
-                      </div>
-                    </motion.div>
-
-                    {/* Features */}
-                    <motion.div 
-                      className="p-5 bg-white/60 rounded-xl border border-[var(--ink)]/5"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 }}
-                    >
-                      <div className="text-xs text-[var(--ink-faded)] uppercase tracking-wider mb-3">Active Features</div>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedFeatures.map(fId => {
-                          const feature = availableFeatures.find(f => f.id === fId);
-                          return feature ? (
-                            <span key={fId} className="text-sm bg-[var(--accent)]/10 text-[var(--accent)] px-3 py-1.5 rounded-lg font-medium">
-                              {feature.name}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    </motion.div>
-
-                    {/* Token Info */}
-                    <motion.div 
-                      className="p-5 bg-white/60 rounded-xl border border-[var(--ink)]/5"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <div className="text-xs text-[var(--ink-faded)] uppercase tracking-wider mb-4">Token</div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div>
-                          <div className="text-xs text-[var(--ink-faded)]">Name</div>
-                          <div className="font-serif text-lg">{tokenDetails.name || "—"}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-[var(--ink-faded)]">Symbol</div>
-                          <div className="font-serif text-lg">${tokenDetails.symbol || "—"}</div>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    {/* Notice */}
-                    <motion.div 
-                      className="p-5 bg-amber-50 border border-amber-200/50 rounded-xl"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 }}
-                    >
-                      <p className="text-sm text-amber-800">
-                        <span className="font-semibold">Note:</span> Token creation is irreversible and requires a small SOL fee. Ensure all details are correct.
-                      </p>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Navigation */}
-              <div className="flex items-center justify-between mt-10 pt-8 border-t border-[var(--ink)]/5">
-                <button
-                  onClick={prevStep}
-                  disabled={currentStepIndex === 0}
-                  className={`group transition-all ${
-                    currentStepIndex === 0 
-                      ? 'opacity-0 pointer-events-none' 
-                      : 'opacity-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-2 text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors">
-                    <span className="text-lg">←</span>
-                    <span className="font-serif text-lg">Back</span>
-                  </span>
-                </button>
-
-                {step === "review" ? (
-                  <button className="group">
-                    <span className="flex items-center gap-3">
-                      <span className="font-serif text-xl text-[var(--accent)]">Deploy Token</span>
-                      <span className="text-[var(--accent)] text-lg group-hover:translate-x-1 transition-transform">→</span>
-                    </span>
-                    <span className="block h-[2px] bg-[var(--accent)] mt-1" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={nextStep}
-                    disabled={!canProceed()}
-                    className={`group transition-all ${
-                      !canProceed() ? 'opacity-40 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className={`font-serif text-xl ${canProceed() ? 'text-[var(--accent)]' : 'text-[var(--ink-faded)]'}`}>
-                        Continue
+                      <p className="text-body text-sm mb-3">{p.desc}</p>
+                      <span className={`text-small ${p.status === "live" ? 'text-[var(--lime)]' : 'text-[var(--grey-500)]'}`}>
+                        {p.status === "live" ? "● READY" : "○ SOON"}
                       </span>
-                      <span className={`text-lg transition-transform ${canProceed() ? 'text-[var(--accent)] group-hover:translate-x-1' : 'text-[var(--ink-faded)]'}`}>→</span>
-                    </span>
-                    <span className={`block h-[2px] mt-1 ${canProceed() ? 'bg-[var(--accent)]' : 'bg-[var(--ink-faded)]'}`} />
-                  </button>
-                )}
+                    </motion.button>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* Features Step */}
+            {step === "features" && (
+              <div>
+                <h2 className="heading-md mb-2">Configure Features</h2>
+                <p className="text-body mb-8">Enable automation for your token</p>
+                <div className="space-y-3">
+                  {Object.values(featureDefinitions).map((feat, i) => {
+                    const id = feat.id as FeatureId;
+                    const config = features[id];
+                    const available = isFeatureAvailable(id);
+                    return (
+                      <motion.div
+                        key={feat.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className={`border-2 transition-all ${config.enabled && available ? 'border-[var(--lime)]' : 'border-[var(--grey-200)]'} ${!available ? 'opacity-50' : ''}`}
+                      >
+                        <button onClick={() => toggleFeature(id)} disabled={!available} className="w-full p-5 flex items-center justify-between text-left">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-5 h-5 border-2 flex items-center justify-center ${config.enabled && available ? 'border-[var(--lime)] bg-[var(--lime)]' : 'border-[var(--grey-400)]'} ${!available ? 'border-[var(--grey-500)] bg-[var(--grey-300)]' : ''}`}>
+                              {config.enabled && available && <span className="text-black text-xs">✓</span>}
+                              {!available && <span className="text-[var(--grey-500)] text-xs">✕</span>}
+                            </div>
+                            <div>
+                              <span className={`font-medium ${!available ? 'line-through text-[var(--grey-500)]' : ''}`}>{feat.name}</span>
+                              <p className={`text-body text-sm ${!available ? 'line-through' : ''}`}>{feat.desc}</p>
+                              {!available && <span className="text-small text-red-400 block mt-1">Pump.fun only</span>}
+                            </div>
+                          </div>
+                          {config.enabled && available && <span className="font-display text-2xl text-[var(--lime)]">{config.percent}%</span>}
+                        </button>
+                        {config.enabled && available && (
+                          <div className="px-5 pb-5 flex gap-2">
+                            {[10, 25, 50, 75, 100].map(pct => (
+                              <button
+                                key={pct}
+                                onClick={(e) => { e.stopPropagation(); setFeatures(prev => ({ ...prev, [id]: { ...prev[id], percent: pct } })); }}
+                                className={`flex-1 py-3 text-small transition-all ${config.percent === pct ? 'bg-[var(--lime)] text-black' : 'bg-[var(--grey-200)] text-white hover:bg-[var(--grey-300)]'}`}
+                              >
+                                {pct}%
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                <div className={`mt-6 p-4 flex items-center justify-between ${totalPercent > 100 ? 'bg-red-900/30 border border-red-500' : 'bg-[var(--grey-200)]'}`}>
+                  <span className="font-medium">Total Allocated</span>
+                  <span className="font-display text-3xl">{totalPercent}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* Details Step */}
+            {step === "details" && (
+              <div>
+                <h2 className="heading-md mb-2">Token Details</h2>
+                <p className="text-body mb-8">Enter your token information</p>
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-small block mb-2">IMAGE *</label>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full p-8 border-2 border-dashed border-[var(--grey-300)] hover:border-[var(--lime)] transition-colors text-center">
+                      {tokenDetails.imagePreview ? (
+                        <div className="flex flex-col items-center">
+                          <img src={tokenDetails.imagePreview} alt="Preview" className="w-20 h-20 object-cover mb-3" />
+                          <span className="text-small text-[var(--lime)]">CHANGE IMAGE</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-16 h-16 mx-auto mb-4 bg-[var(--grey-200)] flex items-center justify-center"><span className="text-2xl">+</span></div>
+                          <span className="text-body">Click to upload</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-small block mb-2">NAME *</label>
+                    <input type="text" value={tokenDetails.name} onChange={(e) => setTokenDetails(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Doge Coin" className="input" />
+                  </div>
+                  <div>
+                    <label className="text-small block mb-2">SYMBOL *</label>
+                    <input type="text" value={tokenDetails.symbol} onChange={(e) => setTokenDetails(prev => ({ ...prev, symbol: e.target.value.toUpperCase() }))} placeholder="e.g. DOGE" maxLength={10} className="input" />
+                  </div>
+                  <div>
+                    <label className="text-small block mb-2">DESCRIPTION</label>
+                    <textarea value={tokenDetails.description} onChange={(e) => setTokenDetails(prev => ({ ...prev, description: e.target.value }))} placeholder="Optional description..." rows={3} className="input resize-none" />
+                  </div>
+                  <div>
+                    <label className="text-small block mb-2">INITIAL BUY (SOL)</label>
+                    <input type="number" step="0.01" min="0.01" value={tokenDetails.initialBuy} onChange={(e) => setTokenDetails(prev => ({ ...prev, initialBuy: parseFloat(e.target.value) || 0.01 }))} className="input" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Review Step */}
+            {step === "review" && (
+              <div>
+                <h2 className="heading-md mb-2">Review & Deploy</h2>
+                <p className="text-body mb-8">Confirm before launching</p>
+                <div className="space-y-4">
+                  <div className="p-5 bg-[var(--grey-200)]">
+                    <span className="text-small text-[var(--grey-500)] block mb-1">PLATFORM</span>
+                    <span className="font-display text-2xl">{platforms.find(p => p.id === selectedPlatform)?.name}</span>
+                  </div>
+                  <div className="p-5 bg-[var(--grey-200)] flex items-center gap-4">
+                    {tokenDetails.imagePreview && <img src={tokenDetails.imagePreview} alt="Token" className="w-14 h-14 object-cover" />}
+                    <div>
+                      <span className="font-display text-2xl block">{tokenDetails.name}</span>
+                      <span className="text-body">${tokenDetails.symbol}</span>
+                    </div>
+                  </div>
+                  <div className="p-5 bg-[var(--grey-200)]">
+                    <span className="text-small text-[var(--grey-500)] block mb-3">ACTIVE FEATURES</span>
+                    <div className="space-y-2">
+                      {Object.entries(features).filter(([_, c]) => c.enabled).map(([id, c]) => (
+                        <div key={id} className="flex justify-between">
+                          <span>{featureDefinitions[id as FeatureId].name}</span>
+                          <span className="text-[var(--lime)] font-mono">{c.percent}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {error && <div className="p-5 bg-red-900/30 border border-red-500 text-red-300">{error}</div>}
+                </div>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between mt-10 pt-8 border-t border-[var(--grey-200)]">
+              <button onClick={prevStep} className={`btn btn-ghost ${currentStepIndex === 0 ? 'opacity-0 pointer-events-none' : ''}`}>← Back</button>
+              {step === "review" ? (
+                <button onClick={handleDeploy} disabled={deploying || !user} className="btn btn-primary">
+                  {deploying ? "Deploying..." : user ? "Deploy Token →" : "Login to Deploy"}
+                </button>
+              ) : (
+                <button onClick={nextStep} disabled={!canProceed()} className={`btn btn-primary ${!canProceed() ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                  Continue →
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-12 border-t border-[var(--ink)]/5">
-        <div className="container flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-            <span className="font-serif text-xl text-[var(--ink)]">Crosspad</span>
+      <footer className="py-12 border-t border-[var(--grey-200)]">
+        <div className="container flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-[var(--lime)]" />
+            <span className="font-display text-xl">LAUNCHLABS</span>
           </div>
-          <div className="flex items-center gap-8 text-sm text-[var(--ink-muted)]">
-            <Link href="/docs" className="hover:text-[var(--accent)] transition-colors">
-              Docs
-            </Link>
-            <a 
-              href="https://twitter.com" 
-              target="_blank" 
-              rel="noopener"
-              className="hover:text-[var(--accent)] transition-colors"
-            >
-              Twitter
-            </a>
+          <div className="flex items-center gap-8 text-sm text-[var(--grey-500)]">
+            <Link href="/docs" className="hover:text-[var(--lime)]">Docs</Link>
             <span>© 2025</span>
           </div>
         </div>

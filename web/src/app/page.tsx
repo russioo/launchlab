@@ -1,516 +1,354 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { motion, useInView, useSpring, useTransform, useScroll } from "framer-motion";
-
-// Animated counter component
-function AnimatedCounter({ value }: { value: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const numericValue = parseFloat(value.replace(/[^0-9.]/g, "")) || 0;
-  const spring = useSpring(0, { duration: 2000, bounce: 0 });
-  const display = useTransform(spring, (v) => {
-    if (value.includes("%")) return `${Math.floor(v)}%`;
-    if (value.includes("/")) return value;
-    return Math.floor(v).toString();
-  });
-
-  useEffect(() => {
-    if (isInView) {
-      spring.set(numericValue);
-    }
-  }, [isInView, numericValue, spring]);
-
-  if (value.includes("/")) {
-    return <span ref={ref}>{value}</span>;
-  }
-
-  return <motion.span ref={ref}>{display}</motion.span>;
-}
-
-// Fade up animation variant
-const fadeUpVariant = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }
-  }
-};
-
-// Stagger container
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
-  }
-};
+import { motion } from "framer-motion";
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [activeFeature, setActiveFeature] = useState<number | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"]
-  });
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0.3]);
-
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-cream)] relative overflow-x-hidden">
-      {/* Floating accent orb */}
-      <div 
-        className="fixed w-[500px] h-[500px] rounded-full pointer-events-none opacity-20"
-        style={{ 
-          background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
-          top: '10%', 
-          right: '-10%',
-          filter: 'blur(60px)',
-        }}
-      />
-      
+    <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="relative z-10">
-        {/* Hero */}
-        <section ref={heroRef} className="pt-36 md:pt-40 pb-12 px-4 md:px-6 lg:px-8">
-          {/* Hero Card Container - Banner style like lumen.onl */}
-          <motion.div 
-            style={{ y: heroY, opacity: heroOpacity }}
-            className="max-w-[1400px] mx-auto rounded-[2rem] bg-[var(--bg-warm)]/95 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_60px_-15px_rgba(0,0,0,0.15)] ring-1 ring-white/50"
-          >
-            {/* Decorative background image */}
-            <div className="absolute inset-0 pointer-events-none">
-              <img 
-                src="/banner.png" 
-                alt="" 
-                className="absolute left-0 top-0 w-full h-full object-cover opacity-60"
-              />
-              {/* Gradient overlay for readability */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-warm)]/80 via-[var(--bg-warm)]/40 to-transparent" />
-            </div>
-            
-            {/* Content */}
-            <div className="relative z-10 w-full px-6 md:px-12 lg:px-16 py-12 md:py-16 lg:py-20">
-              <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-                {/* Left - Text */}
-                <motion.div 
-                  initial="hidden"
-                  animate={mounted ? "visible" : "hidden"}
-                  variants={staggerContainer}
-                >
-                  <motion.div variants={fadeUpVariant} className="flex items-center gap-4 mb-8">
-                    <motion.div 
-                      className="w-8 h-[2px] bg-[var(--accent)]"
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ duration: 0.6, delay: 0.3 }}
-                    />
-                    <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                      Universal Launchpad
-                    </span>
-                  </motion.div>
-                  
-                  <motion.h1 variants={fadeUpVariant} className="heading-xl mb-10">
-                    Launch tokens
-                    <br />
-                    <span className="text-italic">anywhere</span>
-                    <span className="text-[var(--accent)]">.</span>
-                  </motion.h1>
-                  
-                  <motion.p variants={fadeUpVariant} className="text-body max-w-lg mb-14">
-                    A unified launchpad that connects you to every platform. 
-                    Deploy on Pump.fun, configure tokenomics, and let automation 
-                    handle the rest.
-                  </motion.p>
-                  
-                  <motion.div variants={fadeUpVariant} className="flex flex-wrap items-center gap-12">
-                    <Link 
-                      href="/launch" 
-                      className="group inline-block"
-                    >
-                      <span className="text-lg font-medium text-[var(--accent)]">Start launching</span>
-                      <motion.span 
-                        className="block h-[2px] bg-[var(--accent)] mt-1"
-                        whileHover={{ x: 10 }}
-                        transition={{ type: "spring", stiffness: 400 }}
-                      />
-                    </Link>
-                    
-                    <Link 
-                      href="/tokens" 
-                      className="group inline-block"
-                    >
-                      <span className="text-lg font-medium text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors duration-300">Explore tokens</span>
-                      <span className="block h-[2px] bg-transparent group-hover:bg-[var(--ink)] mt-1 transition-all duration-300" />
-                    </Link>
-                  </motion.div>
-                </motion.div>
+      <main>
+        {/* Hero - Full screen with massive typography */}
+        <section className="min-h-screen flex flex-col justify-center relative overflow-hidden pt-20">
+          {/* Background number */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 text-[40vw] font-display text-[var(--grey-100)] leading-none pointer-events-none select-none opacity-50">
+            01
+          </div>
+
+          <div className="container relative z-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={mounted ? { opacity: 1 } : {}}
+              transition={{ duration: 0.8 }}
+            >
+              {/* Label */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={mounted ? { opacity: 1, x: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="flex items-center gap-4 mb-8"
+              >
+                <div className="w-12 h-[2px] bg-[var(--lime)]" />
+                <span className="text-small text-[var(--grey-500)]">Token Launchpad</span>
+              </motion.div>
+
+              {/* Main title */}
+              <motion.h1
+                initial={{ opacity: 0, y: 60 }}
+                animate={mounted ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.8, delay: 0.3 }}
+                className="heading-hero mb-8"
+              >
+                <span className="text-white">LAUNCH</span>
+                <br />
+                <span className="text-[var(--lime)]">TOKENS</span>
+              </motion.h1>
+
+              {/* Subtext */}
+              <motion.p
+                initial={{ opacity: 0, y: 40 }}
+                animate={mounted ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.5 }}
+                className="text-body-lg max-w-md mb-12"
+              >
+                One platform for all launchpads. Pump.fun, Bags, Bonk & more.
+                Buyback, burn, liquidity — all on autopilot.
+              </motion.p>
+
+              {/* CTAs + Platform badges */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={mounted ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="space-y-8"
+              >
+                <div className="flex flex-wrap gap-4">
+                  <Link href="/launch" className="btn btn-primary">
+                    Start Now
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </Link>
+                  <Link href="/tokens" className="btn btn-outline">
+                    Explore
+                  </Link>
+                </div>
                 
-                {/* Right - Video in Frame */}
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={mounted ? { opacity: 1, scale: 1, y: 0 } : {}}
-                  transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  whileHover={{ scale: 1.02 }}
-                  className="relative"
-                >
-                  {/* White frame */}
-                  <div className="bg-white rounded-2xl p-3 shadow-2xl hover:shadow-[0_20px_80px_-20px_rgba(0,0,0,0.2)] transition-shadow duration-500">
-                    <div 
-                      className="relative aspect-[16/10] rounded-xl overflow-hidden bg-black cursor-pointer group"
-                      onClick={togglePlay}
-                    >
-                      {/* Video */}
-                      <video 
-                        ref={videoRef}
-                        autoPlay 
-                        loop 
-                        muted={isMuted}
-                        playsInline
-                        className="absolute inset-0 w-full h-full object-cover z-10"
-                      >
-                        <source src="/hero-video.mp4" type="video/mp4" />
-                      </video>
-                      
-                      {/* Minimal Play indicator - only when paused */}
-                      {!isPlaying && (
-                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
-                          <motion.div 
-                            className="px-5 py-2.5 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-2"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z"/>
-                            </svg>
-                            <span className="text-sm text-white font-medium">Play</span>
-                          </motion.div>
-                        </div>
-                      )}
-                      
-                      {/* Minimal sound toggle - bottom right corner only */}
-                      <motion.button 
-                        onClick={toggleMute}
-                        className="absolute bottom-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <div className="px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
-                          {isMuted ? (
-                            <>
-                              <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                              </svg>
-                              <span className="text-xs text-white/80 font-medium">Sound off</span>
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                              </svg>
-                              <span className="text-xs text-white/80 font-medium">Sound on</span>
-                            </>
-                          )}
-                        </div>
-                      </motion.button>
-                    </div>
+                {/* Supported platforms indicator */}
+                <div className="flex flex-wrap items-center gap-4">
+                  <span className="text-small text-[var(--grey-500)]">SUPPORTS</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {["PUMP.FUN", "BAGS", "BONK"].map((platform) => (
+                      <span key={platform} className="px-3 py-1.5 bg-[var(--grey-100)] border border-[var(--grey-200)] text-small text-[var(--grey-400)]">
+                        {platform}
+                      </span>
+                    ))}
+                    <span className="text-small text-[var(--lime)]">+MORE SOON</span>
                   </div>
-                </motion.div>
-              </div>
-            </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={mounted ? { opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: 1 }}
+            className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4"
+          >
+            <span className="text-small text-[var(--grey-500)]">Scroll</span>
+            <div className="w-[1px] h-16 bg-gradient-to-b from-[var(--grey-500)] to-transparent" />
           </motion.div>
         </section>
 
-        {/* About - Interactive features */}
-        <section className="py-32 md:py-48">
-          <div className="container">
-            <div className="grid md:grid-cols-2 gap-20 md:gap-32 items-start">
-              <motion.div 
-                className="md:sticky md:top-32"
-                initial={{ opacity: 0, x: -40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="flex items-center gap-4 mb-6">
-                  <motion.div 
-                    className="w-8 h-[2px] bg-[var(--accent)]"
-                    initial={{ scaleX: 0 }}
-                    whileInView={{ scaleX: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                  />
-                  <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                    The Platform
+        {/* Marquee */}
+        <section className="py-8 border-y border-[var(--grey-200)] overflow-hidden">
+          <div className="flex animate-marquee whitespace-nowrap">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center gap-16 mx-8">
+                {["PUMP.FUN", "BAGS", "BONK", "MULTI-CHAIN", "ZERO FEES", "24/7", "BUYBACK", "BURN"].map((text, j) => (
+                  <span key={j} className="font-display text-4xl md:text-5xl text-[var(--grey-300)] flex items-center gap-16">
+                    {text}
+                    <span className="w-2 h-2 bg-[var(--lime)]" />
                   </span>
-                </div>
-                <h2 className="heading-lg mb-10">
-                  One dashboard,
-                  <br />
-                  <span className="text-italic">infinite reach</span>
-                </h2>
-                <p className="text-body mb-12 max-w-md">
-                  Stop juggling between platforms. Crosspad gives you a 
-                  single interface to launch across any launchpad, with built-in 
-                  automation for everything.
-                </p>
-                
-                <motion.div whileHover={{ x: 5 }} transition={{ type: "spring", stiffness: 400 }}>
-                  <Link 
-                    href="/docs" 
-                    className="text-[var(--accent)] font-medium border-b-2 border-[var(--accent)] pb-1 hover:text-[var(--ink)] hover:border-[var(--ink)] transition-colors duration-300"
-                  >
-                    Learn how it works
-                  </Link>
-                </motion.div>
-              </motion.div>
-              
-              <div className="space-y-0">
-                {[
-                  { label: "Buyback & Burn", desc: "Automatic deflation. Tokens become scarcer with every trade." },
-                  { label: "Auto-Liquidity", desc: "Fees flow into LP. Depth grows continuously." },
-                  { label: "Holder Rewards", desc: "Distribute revenue or run jackpot draws." },
-                  { label: "24/7 Automation", desc: "Set it once. Runs forever without intervention." },
-                ].map((item, i) => (
-                  <div 
-                    key={item.label}
-                    className="group py-8 border-b border-[var(--ink)]/10 cursor-pointer relative"
-                    onMouseEnter={() => setActiveFeature(i)}
-                    onMouseLeave={() => setActiveFeature(null)}
-                  >
-                    {/* Active indicator */}
-                    <div 
-                      className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 bg-[var(--accent)] rounded-full transition-all duration-300 ${
-                        activeFeature === i ? 'h-12 opacity-100' : 'h-0 opacity-0'
-                      }`}
-                    />
-                    
-                    <div className={`flex items-start justify-between gap-8 transition-all duration-300 ${
-                      activeFeature === i ? 'pl-6' : 'pl-0'
-                    }`}>
-                      <div>
-                        <h3 className={`text-xl font-medium mb-2 transition-colors duration-300 ${
-                          activeFeature === i ? 'text-[var(--accent)]' : 'text-[var(--ink)]'
-                        }`}>
-                          {item.label}
-                        </h3>
-                        <p className="text-[var(--ink-muted)] max-w-sm">
-                          {item.desc}
-                        </p>
-                      </div>
-                      <span className={`text-sm font-mono mt-1 transition-colors duration-300 ${
-                        activeFeature === i ? 'text-[var(--accent)]' : 'text-[var(--ink-faded)]'
-                      }`}>
-                        0{i + 1}
-                      </span>
-                    </div>
-                  </div>
                 ))}
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Features - Bento grid */}
+        <section className="py-32">
+          <div className="container">
+            <div className="flex items-end justify-between mb-16">
+              <div>
+                <span className="text-small text-[var(--lime)] block mb-4">02 / Features</span>
+                <h2 className="heading-xl">What we offer</h2>
+              </div>
+              <Link href="/docs" className="btn btn-ghost hidden md:flex">
+                Learn more →
+              </Link>
+            </div>
+
+            {/* Bento Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Large card */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="md:col-span-2 lg:col-span-2 p-10 bg-[var(--grey-100)] border border-[var(--grey-200)] hover:border-[var(--lime)] transition-colors group"
+              >
+                <div className="flex items-start justify-between mb-16">
+                  <span className="text-small text-[var(--grey-500)]">01</span>
+                  <div className="w-12 h-12 border border-[var(--grey-300)] flex items-center justify-center group-hover:border-[var(--lime)] group-hover:bg-[var(--lime)] transition-all">
+                    <svg className="w-5 h-5 group-hover:text-black transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="heading-lg mb-4">Buyback & Burn</h3>
+                <p className="text-body max-w-md">
+                  Automatic token buybacks and burns. Your token becomes scarcer with every transaction — deflation on autopilot.
+                </p>
+              </motion.div>
+
+              {/* Small card */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="p-10 bg-[var(--lime)] text-black group"
+              >
+                <div className="flex items-start justify-between mb-16">
+                  <span className="text-small opacity-60">02</span>
+                  <span className="font-display text-6xl">24/7</span>
+                </div>
+                <h3 className="heading-md mb-2">Always Running</h3>
+                <p className="text-sm opacity-70">Set once, runs forever.</p>
+              </motion.div>
+
+              {/* Small card */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="p-10 bg-[var(--grey-100)] border border-[var(--grey-200)] hover:border-[var(--lime)] transition-colors group"
+              >
+                <div className="flex items-start justify-between mb-16">
+                  <span className="text-small text-[var(--grey-500)]">03</span>
+                  <div className="w-12 h-12 border border-[var(--grey-300)] flex items-center justify-center group-hover:border-[var(--lime)] group-hover:bg-[var(--lime)] transition-all">
+                    <svg className="w-5 h-5 group-hover:text-black transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="heading-md mb-2">Auto-Liquidity</h3>
+                <p className="text-body text-sm">Fees automatically add to LP depth.</p>
+              </motion.div>
+
+              {/* Wide card */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="md:col-span-2 p-10 bg-[var(--grey-100)] border border-[var(--grey-200)] hover:border-[var(--lime)] transition-colors group"
+              >
+                <div className="flex items-start justify-between mb-16">
+                  <span className="text-small text-[var(--grey-500)]">04</span>
+                  <div className="w-12 h-12 border border-[var(--grey-300)] flex items-center justify-center group-hover:border-[var(--lime)] group-hover:bg-[var(--lime)] transition-all">
+                    <svg className="w-5 h-5 group-hover:text-black transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="heading-lg mb-4">Holder Rewards</h3>
+                <p className="text-body max-w-lg">
+                  Distribute trading fees to holders or run jackpot draws. Build community with real incentives.
+                </p>
+              </motion.div>
             </div>
           </div>
         </section>
 
-        {/* Stats with banner card */}
-        <motion.section 
-          className="py-12 px-4 md:px-6 lg:px-8"
-          initial={{ opacity: 0, y: 60 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {/* Stats Card Container - Same style as hero */}
-          <div className="max-w-[1400px] mx-auto rounded-[2rem] bg-[var(--bg-warm)]/95 backdrop-blur-sm relative overflow-hidden shadow-[0_8px_60px_-15px_rgba(0,0,0,0.15)] ring-1 ring-white/50">
-            {/* Decorative background image */}
-            <div className="absolute inset-0 pointer-events-none">
-              <img 
-                src="/banner.png" 
-                alt="" 
-                className="absolute left-0 top-0 w-full h-full object-cover opacity-40"
-              />
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-[var(--bg-warm)]/60" />
-            </div>
-            
-            {/* Stats Content */}
-            <div className="relative z-10 py-12 md:py-16 px-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0">
-                {[
-                  { value: "3", label: "Platforms" },
-                  { value: "0", label: "Fees", suffix: "%" },
-                  { value: "24/7", label: "Automation" },
-                  { value: "99.9%", label: "Uptime" },
-                ].map((stat, i) => (
-                  <motion.div 
-                    key={stat.label} 
-                    className={`group py-6 md:py-8 text-center cursor-default ${i < 3 ? 'md:border-r md:border-[var(--ink)]/10' : ''}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.1 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <p className="font-serif text-4xl md:text-6xl text-[var(--ink)] mb-3 group-hover:text-[var(--accent)] transition-colors duration-300">
-                      <AnimatedCounter value={stat.value} />
-                      {stat.suffix || ""}
-                    </p>
-                    <p className="text-sm text-[var(--ink-muted)] uppercase tracking-widest group-hover:text-[var(--ink)] transition-colors duration-300">
-                      {stat.label}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Platforms - Interactive list */}
-        <section className="py-32 md:py-48">
+        {/* Stats */}
+        <section className="py-20 border-y border-[var(--grey-200)]">
           <div className="container">
-            <div className="max-w-xl mb-20">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-8 h-[2px] bg-[var(--accent)]" />
-                <span className="text-[var(--accent)] text-sm font-medium tracking-wide">
-                  Integrations
-                </span>
-              </div>
-              <h2 className="heading-lg">
-                Every major
-                <br />
-                <span className="text-italic">launchpad</span>
-              </h2>
-            </div>
-            
-            <div className="space-y-0">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {[
-                { name: "Pump.fun", desc: "The original meme token launchpad", status: "live" },
-                { name: "Bags", desc: "Next-gen token launches", status: "soon" },
-                { name: "Bonk", desc: "Community-powered launchpad", status: "soon" },
-              ].map((platform, i) => (
-                <div 
-                  key={platform.name}
-                  className="group relative py-10 border-b border-[var(--ink)]/10 cursor-pointer overflow-hidden"
+                { value: "3+", label: "Platforms" },
+                { value: "0%", label: "Fees" },
+                { value: "24/7", label: "Uptime" },
+                { value: "∞", label: "Automation" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className="text-center py-8"
                 >
-                  {/* Hover background sweep */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)]/5 to-transparent translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />
-                  
-                  <div className="relative flex items-center justify-between">
-                    <div className="flex items-center gap-8 md:gap-16">
-                      <span className="text-[var(--ink-faded)] group-hover:text-[var(--accent)] text-sm font-mono w-8 transition-colors duration-300">
-                        0{i + 1}
-                      </span>
-                      <div>
-                        <h3 className="text-2xl md:text-3xl font-serif group-hover:text-[var(--accent)] transition-colors duration-300">
-                          {platform.name}
-                        </h3>
-                        <p className="text-[var(--ink-muted)] mt-1 hidden md:block">
-                          {platform.desc}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      {platform.status === "live" ? (
-                        <span className="text-sm text-[var(--accent)] italic">Ready</span>
-                      ) : (
-                        <span className="text-sm text-[var(--ink-faded)] italic">Soon</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  <p className="font-display text-5xl md:text-7xl text-[var(--lime)] mb-4">{stat.value}</p>
+                  <p className="text-small text-[var(--grey-500)]">{stat.label}</p>
+                </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* CTA with accent glow */}
-        <section className="py-32 md:py-48 relative">
+        {/* Platforms */}
+        <section className="py-32">
           <div className="container">
-            {/* Background glow */}
-            <div 
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full opacity-30 pointer-events-none"
-              style={{
-                background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
-                filter: 'blur(80px)',
-              }}
-            />
-            
-            <div className="text-center max-w-3xl mx-auto relative">
-              <h2 className="heading-xl mb-8">
-                Ready to
-                <br />
-                <span className="text-italic">launch</span>
-                <span className="text-[var(--accent)]">?</span>
-              </h2>
-              <p className="text-body mb-14 max-w-md mx-auto">
-                No subscriptions. No hidden fees. Connect your wallet and 
-                deploy your token in minutes.
-              </p>
-              
-              <Link 
-                href="/launch" 
-                className="group inline-block"
+            <div className="mb-16">
+              <span className="text-small text-[var(--lime)] block mb-4">03 / Platforms</span>
+              <h2 className="heading-xl">Integrations</h2>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { name: "Pump.fun", status: "live", desc: "Original meme launchpad" },
+                { name: "Bags", status: "soon", desc: "Next-gen launches" },
+                { name: "Bonk", status: "soon", desc: "Community platform" },
+              ].map((platform, i) => (
+                <motion.div
+                  key={platform.name}
+                  initial={{ opacity: 0, x: -40 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                  className="group flex items-center justify-between p-8 bg-[var(--grey-100)] border border-[var(--grey-200)] hover:border-[var(--lime)] transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-8">
+                    <span className="text-small text-[var(--grey-500)] w-8">0{i + 1}</span>
+                    <div>
+                      <h3 className="font-display text-3xl md:text-4xl group-hover:text-[var(--lime)] transition-colors">
+                        {platform.name}
+                      </h3>
+                      <p className="text-body text-sm hidden md:block">{platform.desc}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <span className={`badge ${platform.status === 'live' ? 'badge-live' : 'badge-soon'}`}>
+                      {platform.status}
+                    </span>
+                    <svg className="w-6 h-6 text-[var(--grey-500)] group-hover:text-[var(--lime)] group-hover:translate-x-2 transition-all" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="py-32 relative overflow-hidden">
+          {/* Background */}
+          <div className="absolute inset-0 bg-[var(--lime)]" />
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-black hidden lg:block" />
+
+          <div className="container relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
               >
-                <span className="text-2xl md:text-3xl font-serif text-[var(--accent)] group-hover:text-[var(--ink)] transition-colors duration-300">
-                  Open App
-                </span>
-                <span className="block h-[2px] w-full bg-[var(--accent)] mt-2 group-hover:bg-[var(--ink)] transition-all duration-300" />
-              </Link>
+                <h2 className="heading-xl text-black mb-6">Ready to launch?</h2>
+                <p className="text-lg text-black/60 mb-10 max-w-md">
+                  No subscriptions. No hidden fees. Connect wallet and deploy in minutes.
+                </p>
+                <Link href="/launch" className="btn bg-black text-white hover:bg-[var(--grey-100)] py-5 px-10">
+                  Launch Now
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="hidden lg:block text-right"
+              >
+                <span className="font-display text-[12rem] text-white/10 leading-none">→</span>
+              </motion.div>
             </div>
           </div>
         </section>
 
         {/* Footer */}
-        <footer className="py-12 border-t border-[var(--ink)]/5">
-          <div className="container flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-              <span className="font-serif text-xl text-[var(--ink)]">Crosspad</span>
-            </div>
-            <div className="flex items-center gap-8 text-sm text-[var(--ink-muted)]">
-              <Link href="/docs" className="hover:text-[var(--accent)] transition-colors">
-                Docs
-              </Link>
-              <a 
-                href="https://twitter.com" 
-                target="_blank" 
-                rel="noopener"
-                className="hover:text-[var(--accent)] transition-colors"
-              >
-                Twitter
-              </a>
-              <span>© 2025</span>
+        <footer className="py-16 border-t border-[var(--grey-200)]">
+          <div className="container">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-[var(--lime)]" />
+                <span className="font-display text-xl">LAUNCHLABS</span>
+              </div>
+
+              <div className="flex items-center gap-12">
+                <Link href="/docs" className="nav-link">Docs</Link>
+                <a href="https://twitter.com" target="_blank" rel="noopener" className="nav-link">Twitter</a>
+                <span className="text-[var(--grey-500)] text-sm">© 2025</span>
+              </div>
             </div>
           </div>
         </footer>

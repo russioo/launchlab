@@ -581,24 +581,33 @@ tokenRoutes.post("/deploy", upload.single("image"), async (req: Request, res: Re
       }
     } else if (platform === "bags") {
       console.log("[Deploy] Creating Bags.fm token...");
-      result = await bagsService.createToken({
-        name,
-        symbol,
-        description: description || "",
-        image: imageFile?.buffer || Buffer.from([]),
-        creatorKeypair: creatorWallet,
-        initialBuySol,
-      });
+      result = await bagsService.createToken(
+        connection,
+        creatorWallet,
+        { name, symbol, description: description || "" },
+        imageFile?.buffer || Buffer.from([]),
+        initialBuySol
+      );
     } else if (platform === "bonk") {
       console.log("[Deploy] Creating Bonk.fun token...");
-      result = await bonkService.createToken({
-        name,
-        symbol,
-        description: description || "",
-        image: imageFile?.buffer || Buffer.from([]),
-        creatorKeypair: creatorWallet,
-        initialBuySol,
-      });
+      // Bonk requires metadata URI - upload first
+      let bonkMetadataUri = "";
+      if (imageFile?.buffer) {
+        const uploadResult = await pumpfunUploadMetadata(
+          imageFile.buffer,
+          { name, symbol, description: description || "" }
+        );
+        if ('metadataUri' in uploadResult) {
+          bonkMetadataUri = uploadResult.metadataUri;
+        }
+      }
+      result = await bonkService.createToken(
+        connection,
+        creatorWallet,
+        { name, symbol, description: description || "" },
+        bonkMetadataUri,
+        initialBuySol
+      );
     } else {
       return res.status(400).json({ error: `Platform "${platform}" not supported` });
     }

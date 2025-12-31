@@ -322,6 +322,33 @@ export async function claimCreatorFees(
 /**
  * Buy tokens on Pumpfun bonding curve
  */
+export async function buyTokens(
+  connection: Connection,
+  buyerKeypair: Keypair,
+  mint: string,
+  solAmount: number,
+  slippage: number = 10
+): Promise<{ success: boolean; signature?: string; tokenAmount?: number; error?: string }> {
+  return buyToken(connection, buyerKeypair, mint, solAmount, slippage);
+}
+
+/**
+ * Add liquidity (stub - not fully implemented for Pumpfun)
+ */
+export async function addLiquidity(
+  connection: Connection,
+  keypair: Keypair,
+  mint: string,
+  solAmount: number
+): Promise<{ success: boolean; signature?: string; lpTokens?: number; error?: string }> {
+  // Pumpfun doesn't have traditional LP - bonding curve handles liquidity
+  console.log(`[Pumpfun] addLiquidity not applicable for bonding curve tokens`);
+  return { success: false, error: "Pumpfun uses bonding curve, not traditional LP" };
+}
+
+/**
+ * Buy tokens on Pumpfun bonding curve (single)
+ */
 export async function buyToken(
   connection: Connection,
   buyerKeypair: Keypair,

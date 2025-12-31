@@ -686,10 +686,10 @@ export async function claimCreatorFees(
 
     // Process each target position
     for (let i = 0; i < targetPositions.length; i++) {
-      const position = targetPositions[i];
+      const position = targetPositions[i] as any;
       console.log(`[Bags] Processing position ${i + 1}/${targetPositions.length}...`);
 
-      // Calculate claimable amount
+      // Calculate claimable amount - properties may vary by SDK version
       let claimableAmount = 0;
       if (position.virtualPoolClaimableAmount) {
         claimableAmount += Number(position.virtualPoolClaimableAmount);
@@ -887,7 +887,7 @@ export async function buyToken(
     return { 
       success: true, 
       signature,
-      amount: quoteResponse.outAmount || 0,
+      amount: Number(quoteResponse.outAmount) || 0,
     };
   } catch (error: any) {
     console.error("[Bags] Error buying token:", error);
@@ -916,7 +916,7 @@ export async function sellToken(
     const sdk = new BagsSDK(apiKey, connection, "processed");
     const commitment = sdk.state.getCommitment();
 
-    const SOL_MINT = "So11111111111111111111111111111111111111112";
+    const SOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
     const tokenMint = new PublicKey(mint);
 
     // Get quote for selling tokens to SOL
@@ -977,9 +977,9 @@ export async function getQuote(
     });
 
     return {
-      outAmount: quote.outAmount || 0,
-      minOutAmount: quote.minOutAmount || 0,
-      priceImpactPct: quote.priceImpactPct || 0,
+      outAmount: Number(quote.outAmount) || 0,
+      minOutAmount: Number(quote.minOutAmount) || 0,
+      priceImpactPct: Number(quote.priceImpactPct) || 0,
     };
   } catch (error) {
     console.error("[Bags] Error getting quote:", error);

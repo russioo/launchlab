@@ -227,19 +227,32 @@ async function updateTokenLastRun(tokenId: string) {
 /**
  * Claim fees for a token
  */
-async function claimFees(token: TokenJob, keypair: Keypair): Promise<{ success: boolean; amount: number; signature?: string; error?: string }> {
+async function claimFees(token: TokenJob, keypair: Keypair): Promise<{ success: boolean; amount: number; signature?: string; error?: string; message?: string }> {
+  let result: { success: boolean; amount?: number; signature?: string; error?: string; message?: string };
+  
   switch (token.platform) {
     case "bags":
-      return bagsService.claimCreatorFees(connection, keypair, token.mint);
+      result = await bagsService.claimCreatorFees(connection, keypair, token.mint);
+      break;
     case "pumpfun":
-      return pumpfunService.claimCreatorFees(connection, keypair, token.mint);
+      result = await pumpfunService.claimCreatorFees(connection, keypair, token.mint);
+      break;
     case "bonk":
       // Use pool address from DB if available, otherwise use mint
       const poolOrMint = token.pumpfun_bonding_curve || token.mint;
-      return bonkService.claimCreatorFees(connection, keypair, poolOrMint);
+      result = await bonkService.claimCreatorFees(connection, keypair, poolOrMint);
+      break;
     default:
       return { success: false, amount: 0, error: `Unknown platform: ${token.platform}` };
   }
+  
+  return {
+    success: result.success,
+    amount: result.amount ?? 0,
+    signature: result.signature,
+    error: result.error,
+    message: result.message,
+  };
 }
 
 /**
@@ -667,7 +680,8 @@ async function getTokenHolders(mint: string, limit: number): Promise<{ address: 
       
       if (response.ok) {
         const data = await response.json();
-        return (data || []).map((acc: any) => ({
+        const accounts = Array.isArray(data) ? data : [];
+        return accounts.map((acc: { owner: string; amount?: number }) => ({
           address: acc.owner,
           balance: acc.amount || 0,
         }));

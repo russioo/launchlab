@@ -262,8 +262,8 @@ export default function Home() {
             <div className="space-y-2">
               {[
                 { name: "Pump.fun", status: "live", desc: "Original meme launchpad" },
-                { name: "Bags", status: "soon", desc: "Next-gen launches" },
-                { name: "Bonk", status: "soon", desc: "Community platform" },
+                { name: "Bags", status: "live", desc: "Next-gen launches" },
+                { name: "Bonk", status: "live", desc: "Community platform" },
               ].map((platform, i) => (
                 <motion.div
                   key={platform.name}

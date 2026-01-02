@@ -14,6 +14,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:3000",
   "https://liquidity-snowy.vercel.app",
   "https://liquidify.fun",
+  "https://www.launchlabapp.fun",
+  "https://launchlabapp.fun",
   "http://localhost:3000"
 ];
 

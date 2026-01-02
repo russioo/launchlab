@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { useAuth } from "@/components/AuthContext";
 import { motion } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://launchlab-n8ds.onrender.com";
 
 interface TokenSettings {
   id: string;

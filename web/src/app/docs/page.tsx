@@ -35,7 +35,7 @@ const features = [
 const platforms = [
   { name: "PUMP.FUN", status: "LIVE", desc: "Original memecoin launchpad with bonding curve" },
   { name: "BAGS.FM", status: "LIVE", desc: "Token-2022 with built-in creator fees" },
-  { name: "BONK.FUN", status: "LIVE", desc: "Raydium LaunchLab powered by Bonk" },
+  { name: "USD1", status: "LIVE", desc: "Stablecoin launchpad" },
   { name: "MOONSHOT", status: "SOON", desc: "Dexscreener's launchpad integration" },
 ];
 

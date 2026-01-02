@@ -60,7 +60,7 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.5 }}
                 className="text-body-lg max-w-md mb-12"
               >
-                One platform for all launchpads. Pump.fun, Bags, Bonk & more.
+                One platform for all launchpads. Pump.fun, Bags, USD1 & more.
                 Buyback, burn, liquidity — all on autopilot.
               </motion.p>
 
@@ -87,7 +87,7 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-4">
                   <span className="text-small text-[var(--grey-500)]">SUPPORTS</span>
                   <div className="flex flex-wrap items-center gap-2">
-                    {["PUMP.FUN", "BAGS", "BONK"].map((platform) => (
+                    {["PUMP.FUN", "BAGS", "USD1"].map((platform) => (
                       <span key={platform} className="px-3 py-1.5 bg-[var(--grey-100)] border border-[var(--grey-200)] text-small text-[var(--grey-400)]">
                         {platform}
                       </span>
@@ -116,7 +116,7 @@ export default function Home() {
           <div className="flex animate-marquee whitespace-nowrap">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center gap-16 mx-8">
-                {["PUMP.FUN", "BAGS", "BONK", "MULTI-CHAIN", "ZERO FEES", "24/7", "BUYBACK", "BURN"].map((text, j) => (
+                {["PUMP.FUN", "BAGS", "USD1", "MULTI-CHAIN", "ZERO FEES", "24/7", "BUYBACK", "BURN"].map((text, j) => (
                   <span key={j} className="font-display text-4xl md:text-5xl text-[var(--grey-300)] flex items-center gap-16">
                     {text}
                     <span className="w-2 h-2 bg-[var(--lime)]" />
@@ -263,7 +263,7 @@ export default function Home() {
               {[
                 { name: "Pump.fun", status: "live", desc: "Original meme launchpad" },
                 { name: "Bags", status: "live", desc: "Next-gen launches" },
-                { name: "Bonk", status: "live", desc: "Community platform" },
+                { name: "USD1", status: "live", desc: "Stablecoin launchpad" },
               ].map((platform, i) => (
                 <motion.div
                   key={platform.name}

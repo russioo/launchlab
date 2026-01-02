@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 const platforms = [
   { id: "pumpfun", name: "PUMP.FUN", desc: "Original memecoin launchpad", status: "live" },
   { id: "bags", name: "BAGS.FM", desc: "Token-2022 with creator fees", status: "live" },
-  { id: "bonk", name: "BONK.FUN", desc: "Raydium LaunchLab powered", status: "live" },
+  { id: "usd1", name: "USD1", desc: "Stablecoin launchpad", status: "live" },
   { id: "moonshot", name: "MOONSHOT", desc: "Dexscreener's launchpad", status: "coming" },
 ];
 

@@ -145,7 +145,7 @@ export function CreateTokenForm() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { id: "pumpfun", name: "Pump.fun", status: "live" },
-            { id: "bonk", name: "Bonk", status: "soon" },
+            { id: "usd1", name: "USD1", status: "live" },
             { id: "bags", name: "Bags", status: "soon" },
           ].map((p) => (
             <button

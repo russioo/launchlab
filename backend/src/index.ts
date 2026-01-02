@@ -40,13 +40,12 @@ export const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || "placeholder"
 );
 
-// Import routes after supabase is initialized
-import("./routes/tokens.js").then(({ tokenRoutes }) => {
-  app.use("/api/tokens", tokenRoutes);
-});
-import("./routes/auth.js").then(({ authRoutes }) => {
-  app.use("/api/auth", authRoutes);
-});
+// Import routes synchronously
+import { tokenRoutes } from "./routes/tokens.js";
+import { authRoutes } from "./routes/auth.js";
+
+app.use("/api/tokens", tokenRoutes);
+app.use("/api/auth", authRoutes);
 
 // Root route
 app.get("/", (req, res) => {

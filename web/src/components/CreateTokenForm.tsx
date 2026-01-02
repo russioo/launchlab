@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthContext";
 import { createToken } from "@/lib/api";
 
-type Platform = "pumpfun" | "bonk" | "bags";
+type Platform = "pumpfun" | "usd1" | "bags";
 
 export function CreateTokenForm() {
   const router = useRouter();
@@ -27,7 +27,17 @@ export function CreateTokenForm() {
 
   // Features
   const [enableBuyback, setEnableBuyback] = useState(true);
+  const [enableBurn, setEnableBurn] = useState(true);
   const [enableAutoLP, setEnableAutoLP] = useState(true);
+  const [enableRevShare, setEnableRevShare] = useState(false);
+  const [enableJackpot, setEnableJackpot] = useState(false);
+  
+  // Platform feature availability
+  const platformFeatures = {
+    pumpfun: { buyback: true, burn: true, autoLP: true, revShare: true, jackpot: true },
+    usd1: { buyback: true, burn: true, autoLP: false, revShare: true, jackpot: true },
+    bags: { buyback: true, burn: true, autoLP: false, revShare: true, jackpot: true },
+  };
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,8 +155,8 @@ export function CreateTokenForm() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { id: "pumpfun", name: "Pump.fun", status: "live" },
+            { id: "bags", name: "Bags", status: "live" },
             { id: "usd1", name: "USD1", status: "live" },
-            { id: "bags", name: "Bags", status: "soon" },
           ].map((p) => (
             <button
               key={p.id}
@@ -327,14 +337,36 @@ export function CreateTokenForm() {
       <div>
         <h3 className="font-medium mb-4">Automation</h3>
         <div className="space-y-0">
-          <div className="feature-toggle" onClick={() => setEnableBuyback(!enableBuyback)}>
-            <span className="toggle-label">Auto Buyback</span>
-            <div className={`toggle-switch ${enableBuyback ? "active" : ""}`} />
-          </div>
-          <div className="feature-toggle" onClick={() => setEnableAutoLP(!enableAutoLP)}>
-            <span className="toggle-label">Auto Add Liquidity</span>
-            <div className={`toggle-switch ${enableAutoLP ? "active" : ""}`} />
-          </div>
+          {platformFeatures[platform].buyback && (
+            <div className="feature-toggle" onClick={() => setEnableBuyback(!enableBuyback)}>
+              <span className="toggle-label">Auto Buyback</span>
+              <div className={`toggle-switch ${enableBuyback ? "active" : ""}`} />
+            </div>
+          )}
+          {platformFeatures[platform].burn && (
+            <div className="feature-toggle" onClick={() => setEnableBurn(!enableBurn)}>
+              <span className="toggle-label">Auto Burn</span>
+              <div className={`toggle-switch ${enableBurn ? "active" : ""}`} />
+            </div>
+          )}
+          {platformFeatures[platform].autoLP && (
+            <div className="feature-toggle" onClick={() => setEnableAutoLP(!enableAutoLP)}>
+              <span className="toggle-label">Auto Add Liquidity</span>
+              <div className={`toggle-switch ${enableAutoLP ? "active" : ""}`} />
+            </div>
+          )}
+          {platformFeatures[platform].revShare && (
+            <div className="feature-toggle" onClick={() => setEnableRevShare(!enableRevShare)}>
+              <span className="toggle-label">Revenue Share</span>
+              <div className={`toggle-switch ${enableRevShare ? "active" : ""}`} />
+            </div>
+          )}
+          {platformFeatures[platform].jackpot && (
+            <div className="feature-toggle" onClick={() => setEnableJackpot(!enableJackpot)}>
+              <span className="toggle-label">Jackpot</span>
+              <div className={`toggle-switch ${enableJackpot ? "active" : ""}`} />
+            </div>
+          )}
         </div>
       </div>
 

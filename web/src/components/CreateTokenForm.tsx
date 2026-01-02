@@ -35,8 +35,8 @@ export function CreateTokenForm() {
   // Platform feature availability
   const platformFeatures = {
     pumpfun: { buyback: true, burn: true, autoLP: true, revShare: true, jackpot: true },
-    usd1: { buyback: true, burn: true, autoLP: false, revShare: true, jackpot: true },
-    bags: { buyback: true, burn: true, autoLP: false, revShare: true, jackpot: true },
+    usd1: { buyback: false, burn: false, autoLP: false, revShare: false, jackpot: false },
+    bags: { buyback: false, burn: false, autoLP: false, revShare: false, jackpot: false },
   };
 
   // UI state
@@ -366,6 +366,11 @@ export function CreateTokenForm() {
               <span className="toggle-label">Jackpot</span>
               <div className={`toggle-switch ${enableJackpot ? "active" : ""}`} />
             </div>
+          )}
+          {!platformFeatures[platform].buyback && !platformFeatures[platform].autoLP && (
+            <p className="text-sm text-[var(--ink-faded)] italic py-4">
+              Automation features coming soon for this platform
+            </p>
           )}
         </div>
       </div>

@@ -57,6 +57,11 @@ app.get("/", (req, res) => {
       health: "/health",
       tokens: "/api/tokens",
       stats: "/api/tokens/stats",
+      auth: {
+        register: "POST /api/auth/register",
+        login: "POST /api/auth/login",
+        user: "GET /api/auth/user/:id",
+      }
     }
   });
 });
